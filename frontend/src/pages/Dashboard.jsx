@@ -182,24 +182,6 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <aside className="space-y-3">
-          <div className="app-card rounded-2xl p-5">
-            <div className="mb-4 flex items-center gap-3">
-              <span className="grid h-10 w-10 place-items-center rounded-xl bg-emerald-50 text-emerald-600">
-                <CheckCircle2 size={20} />
-              </span>
-              <div>
-                <h2 className="font-black text-slate-950">Estado operativo</h2>
-                <p className="text-sm text-slate-500">Servicios principales activos.</p>
-              </div>
-            </div>
-            <div className="space-y-3">
-              <HealthRow label="API" value="Online" />
-              <HealthRow label="Sesion" value="Protegida" />
-              <HealthRow label="Base local" value="Disponible" />
-            </div>
-          </div>
-
           {!isGDH && !isSupervisor && perfil && (
             <div className="app-card rounded-2xl p-5">
               <h2 className="font-black text-slate-950">Resumen personal</h2>
