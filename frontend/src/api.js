@@ -1,6 +1,10 @@
 import axios from "axios";
 
-const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8000";
+const RENDER_API_URL = "https://sistema-logistico-zpcf.onrender.com";
+const isLocalHost =
+  typeof window !== "undefined" &&
+  ["localhost", "127.0.0.1"].includes(window.location.hostname);
+const API_BASE = (import.meta.env.VITE_API_URL || (isLocalHost ? "http://localhost:8000" : RENDER_API_URL)).replace(/\/$/, "");
 const TOKEN_KEY = "token";
 const REFRESH_TOKEN_KEY = "refresh_token";
 const USER_KEY = "user";
