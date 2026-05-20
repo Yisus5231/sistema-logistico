@@ -142,9 +142,6 @@ export default function Dashboard() {
             <h1 className="mt-1 max-w-3xl text-3xl font-black tracking-tight sm:text-4xl">
               {user?.nombre || "Usuario"}
             </h1>
-            <p className="mt-3 max-w-2xl text-sm font-semibold leading-6 text-slate-600">
-              Onsite Oslo, Punta Negra. Panel operativo para asistencia, colaboradores, observaciones y comunicacion interna.
-            </p>
           </div>
 
           <div className="rounded-2xl border border-slate-200 bg-[#f8fafc] p-4">
