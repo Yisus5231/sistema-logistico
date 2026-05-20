@@ -30,7 +30,16 @@ from observaciones_endpoints import router as observaciones_router
 
 # Crear tablas
 Base.metadata.create_all(bind=engine)
-
+# Auto-seed usuarios si no existen
+from database import SessionLocal as _SessionLocal
+from models import Usuario as _Usuario
+def _auto_seed():
+    db = _SessionLocal()
+    if db.query(_Usuario).count() == 0:
+        from crear_usuarios_prueba import crear_usuarios
+        crear_usuarios()
+    db.close()
+_auto_seed()
 # ═══════════════════════════════════════════
 # APP
 # ═══════════════════════════════════════════
