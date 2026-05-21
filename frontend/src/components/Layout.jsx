@@ -82,6 +82,7 @@ export default function Layout() {
 
   const roleKey = user?.rol?.toLowerCase();
   const roleClass = ROLE_STYLES[roleKey] || ROLE_STYLES.auxiliar;
+  const userPositionLabel = roleKey === "auxiliar" ? user?.cargo || "Cargo no definido" : getRolLabel(user?.rol);
   const initials = user?.nombre
     ?.split(" ")
     .filter(Boolean)
@@ -188,7 +189,7 @@ export default function Layout() {
             {!collapsed && (
               <div className="min-w-0">
                 <p className="truncate text-sm font-bold text-white">{user?.nombre || "Usuario"}</p>
-                <p className="truncate text-xs font-medium text-white/70">{getRolLabel(user?.rol)}</p>
+                <p className="truncate text-xs font-medium text-white/70">{userPositionLabel}</p>
               </div>
             )}
           </div>
