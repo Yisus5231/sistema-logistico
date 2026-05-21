@@ -12,6 +12,7 @@ export default function MiPerfil() {
   const [newBirthday, setNewBirthday] = useState("");
   const [saving, setSaving] = useState(false);
   const user = api.getUser();
+  const isAuxiliar = user?.rol?.toLowerCase() === "auxiliar";
 
   useEffect(() => { loadPerfil(); }, []);
 
@@ -84,7 +85,7 @@ export default function MiPerfil() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5 text-sm">
           <InfoField label="DNI" value={perfil.dni} />
-          <InfoField label="Rol" value={perfil.rol} />
+          <InfoField label={isAuxiliar ? "Cargo" : "Rol"} value={isAuxiliar ? perfil.cargo : perfil.rol} />
           <InfoField label="Fecha de ingreso" value={perfil.fecha_ingreso} />
           <InfoField label="Fecha de cumpleaños" value={perfil.fecha_cumpleanos} />
           <InfoField label="Vacaciones pendientes" value={`${perfil.vacaciones_pendientes} días`} />
@@ -92,7 +93,7 @@ export default function MiPerfil() {
       </div>
 
       {/* Change Password */}
-      {user?.rol !== "Auxiliar" ? (
+      {!isAuxiliar ? (
         <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
           <h3 className="text-base font-semibold text-slate-800 mb-4 flex items-center gap-2">
             <Key size={18} className="text-red-500" />
@@ -146,7 +147,7 @@ export default function MiPerfil() {
       )}
 
       {/* Change Birthday */}
-      {!perfil.cambio_cumpleanos && user?.rol !== "Auxiliar" && (
+      {!perfil.cambio_cumpleanos && !isAuxiliar && (
         <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
           <h3 className="text-base font-semibold text-slate-800 mb-4 flex items-center gap-2">
             <Calendar size={18} className="text-red-500" />

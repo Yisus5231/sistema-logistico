@@ -59,6 +59,7 @@ export default function Dashboard() {
   const role = user?.rol?.toLowerCase();
   const isGDH = role === "gdh";
   const isSupervisor = ["supervisor", "lider", "coordinador"].includes(role);
+  const positionLabel = role === "auxiliar" ? user?.cargo || "Cargo no definido" : getRolLabel(user?.rol);
 
   const greeting = useMemo(() => {
     const hour = new Date().getHours();
@@ -133,7 +134,7 @@ export default function Dashboard() {
           <div className="min-w-0">
             <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-[#e30613]/15 bg-[#e30613]/8 px-3 py-1 text-xs font-black text-[#e30613]">
               <Sparkles size={14} />
-              {getRolLabel(user?.rol)} workspace
+              {positionLabel} workspace
             </div>
             <div className="mb-3">
               <AdeccoLogo className="text-[0.64rem]" />
@@ -142,14 +143,17 @@ export default function Dashboard() {
             <h1 className="mt-1 max-w-3xl text-3xl font-black tracking-tight sm:text-4xl">
               {user?.nombre || "Usuario"}
             </h1>
+            <p className="mt-3 max-w-2xl text-sm font-semibold leading-6 text-slate-600">
+              Onsite Oslo, Punta Negra. Panel operativo para asistencia, colaboradores, observaciones y comunicacion interna.
+            </p>
           </div>
 
           <div className="rounded-2xl border border-slate-200 bg-[#f8fafc] p-4">
             <p className="text-xs font-black uppercase tracking-[0.18em] text-[#e30613]">Contexto actual</p>
             <div className="mt-4 space-y-3">
-              <ContextRow label="Rol" value={getRolLabel(user?.rol)} />
+              <ContextRow label={role === "auxiliar" ? "Cargo" : "Rol"} value={positionLabel} />
               <ContextRow label="Sede" value="Onsite Oslo, Punta Negra" />
-              <ContextRow label="Cargo" value={user?.cargo || "No definido"} />
+              {role !== "auxiliar" && <ContextRow label="Cargo" value={user?.cargo || "No definido"} />}
             </div>
           </div>
         </div>
@@ -181,6 +185,24 @@ export default function Dashboard() {
             ))}
           </div>
         </div>
+
+        <aside className="space-y-3">
+          <div className="app-card rounded-2xl p-5">
+            <div className="mb-4 flex items-center gap-3">
+              <span className="grid h-10 w-10 place-items-center rounded-xl bg-emerald-50 text-emerald-600">
+                <CheckCircle2 size={20} />
+              </span>
+              <div>
+                <h2 className="font-black text-slate-950">Estado operativo</h2>
+                <p className="text-sm text-slate-500">Servicios principales activos.</p>
+              </div>
+            </div>
+            <div className="space-y-3">
+              <HealthRow label="API" value="Online" />
+              <HealthRow label="Sesion" value="Protegida" />
+              <HealthRow label="Base local" value="Disponible" />
+            </div>
+          </div>
 
           {!isGDH && !isSupervisor && perfil && (
             <div className="app-card rounded-2xl p-5">

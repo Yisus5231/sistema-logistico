@@ -100,6 +100,7 @@ export default function ColaboradorDetalle() {
   };
 
   const inputCls = "w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none transition bg-white";
+  const isAuxiliarColaborador = colaborador?.rol?.toLowerCase() === "auxiliar";
 
   if (loading) {
     return (
@@ -175,7 +176,7 @@ export default function ColaboradorDetalle() {
         {!editMode ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5 text-sm">
             <InfoField label="DNI" value={colaborador.dni} />
-            <InfoField label="Rol" value={colaborador.rol} />
+            <InfoField label={isAuxiliarColaborador ? "Cargo" : "Rol"} value={isAuxiliarColaborador ? colaborador.cargo : colaborador.rol} />
             <InfoField label="Fecha de ingreso" value={colaborador.fecha_ingreso} />
             <InfoField label="Fecha de cumpleaños" value={colaborador.fecha_cumpleanos} />
             <InfoField label="Vacaciones pendientes" value={`${colaborador.vacaciones_pendientes ?? 0} días`} />
@@ -256,7 +257,7 @@ export default function ColaboradorDetalle() {
           <h2 className="text-base font-semibold text-slate-800 mb-4">Información adicional</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5 text-sm">
             <InfoField label="DNI" value={colaborador.dni} />
-            <InfoField label="Rol del sistema" value={colaborador.rol} />
+            <InfoField label={isAuxiliarColaborador ? "Cargo" : "Rol del sistema"} value={isAuxiliarColaborador ? colaborador.cargo : colaborador.rol} />
             <InfoField label="Área asignada" value={colaborador.area} />
             <InfoField label="Fecha de ingreso" value={colaborador.fecha_ingreso} />
             <InfoField label="Fecha de cumpleaños" value={colaborador.fecha_cumpleanos} />
