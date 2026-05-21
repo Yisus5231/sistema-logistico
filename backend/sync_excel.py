@@ -9,6 +9,7 @@ from dateutil.relativedelta import relativedelta
 from sqlalchemy.orm import Session
 from models import Usuario, HistorialCambios, SincronizacionExcel
 import logging
+import unicodedata
 
 logger = logging.getLogger(__name__)
 
@@ -17,6 +18,70 @@ logger = logging.getLogger(__name__)
 # MAPEO DE CARGO → ROL (SIMPLE)
 # ═══════════════════════════════════════════
 # ROLES ÚNICOS: Supervisor, Lider, Auxiliar, Coordinador, gdh
+
+CARGO_ROL_MAP = {
+    "AUXILIAR DE ALMACEN": "Auxiliar",
+    "LIDER DE OPERACIONES": "Lider",
+    "SUPERVISOR DE OPERACIONES": "Supervisor",
+    "COORDINADOR DE OPERACIONES": "Coordinador",
+    "OPERARIO DE PICKING": "Auxiliar",
+    "INVENTARIADOR": "Auxiliar",
+    "ANALISTA DE CONTROL": "Auxiliar",
+    "ASISTENTE DE CONTROL": "Auxiliar",
+    "ASISTENTE DE OPERACIONES": "Auxiliar",
+    "AUXILIAR DE CAMPANA": "Auxiliar",
+    "OPERADOR DUAL": "Auxiliar",
+    "OPERADOR DE APILADOR": "Auxiliar",
+    "OPERADOR DE MONTACARGA": "Auxiliar",
+    "OPERADOR APILADOR": "Auxiliar",
+    "JEFE DE OPERACIONES": "gdh",
+    "ASISTENTE DE INVENTARIO": "Auxiliar",
+    "ASISTENTE DE GESTION HUMANA": "gdh",
+    "PREVENCIONISTA DE RIESGO": "Auxiliar",
+    "RESPONSABLE DE GESTION": "Auxiliar",
+    "ANALISTA DE OPERACIONES": "Auxiliar",
+    "CONSULTOR SELECCION JUNIOR 2": "Auxiliar",
+    "COORDINADOR DE ASEGURAMIENTO DE LA CALIDAD": "Auxiliar",
+    "SUPERVISOR SSOMA": "Supervisor",
+    "ASISTENTE SSOMA": "Auxiliar",
+}
+
+AREA_FINAL_MAP = {
+    "AMR": "Amr",
+    "SORTER": "Sorter",
+    "ADAPTO": "Adapto",
+    "ALMACENAJE": "Almacenaje",
+    "DESPACHO": "Despacho",
+    "ECOMMERCE": "Ecommerce",
+    "PICKING CASES": "Picking Cases",
+    "ESTIBA": "Estiba",
+    "INVENTARIO": "Inventario",
+    "PICKING PANTERA": "Picking",
+    "PICKING ELECTRO": "Picking",
+    "ELECTRO-CROSS": "Recepcion Electro",
+    "IMPORTADOS": "Recepcion Importados",
+    "NACIONAL - FC": "Recepcion Nacional",
+    "UULL": "Recepcion Uull",
+    "OPERADORES": "Operadores",
+    "GDH": "Gdh",
+    "SSOMA": "Ssoma",
+}
+
+
+def normalizar_cargo(cargo: str) -> str:
+    if not cargo:
+        return ""
+    texto = unicodedata.normalize("NFKD", str(cargo).strip())
+    texto = "".join(char for char in texto if not unicodedata.combining(char))
+    return " ".join(texto.upper().split())
+
+
+def obtener_area_final(area: str) -> str:
+    if not area:
+        return ""
+    area_key = normalizar_cargo(area)
+    return AREA_FINAL_MAP.get(area_key, str(area).strip().title())
+
 
 def obtener_rol_por_cargo(cargo: str) -> str:
     """
@@ -37,7 +102,11 @@ def obtener_rol_por_cargo(cargo: str) -> str:
     if not cargo:
         return "Auxiliar"
 
-    cargo_lower = cargo.lower().strip()
+    cargo_key = normalizar_cargo(cargo)
+    if cargo_key in CARGO_ROL_MAP:
+        return CARGO_ROL_MAP[cargo_key]
+
+    cargo_lower = cargo_key.lower()
 
     # SUPERVISOR
     if "supervisor" in cargo_lower:
@@ -107,6 +176,8 @@ class SincronizadorExcel:
                     nombre = str(row["Nombre"]).strip()
                     cargo = str(row["Cargo"]).strip()
                     area = str(row["Área"]).strip()
+
+                    area = obtener_area_final(area)
 
                     # Validar DNI
                     if not dni or dni == "nan" or dni == "":
