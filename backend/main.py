@@ -27,6 +27,7 @@ from auth import (
     verificar_rate_limit, registrar_intento_fallido, limpiar_intentos
 )
 from observaciones_endpoints import router as observaciones_router
+from reglas_turnos import determinar_turno
 
 # Crear tablas
 Base.metadata.create_all(bind=engine)
@@ -618,16 +619,32 @@ async def subir_tareo_excel(
                         return col_lower[name.lower()]
                 return None
 
-            dni_col = find_column(df.columns, ["DNI", "Cedula", "Documento"])
+            dni_col = find_column(df.columns, ["DNI", "Cedula", "Documento", "Identificación"])
             fecha_col = find_column(df.columns, ["Fecha", "Date"])
             asistencia_col = find_column(df.columns, ["Asistencia", "Tipo", "Status", "Turno"])
+            primera_col = find_column(df.columns, ["Primera", "Hora Entrada", "Entrada"])
+            ultima_col = find_column(df.columns, ["Ultima", "Última", "Hora Salida", "Salida"])
             observacion_col = find_column(df.columns, ["Observaciones", "Comentario", "Notas"])
 
-            if not dni_col or not fecha_col or not asistencia_col:
+            # Validar que tengamos datos mínimos
+            if not dni_col or not fecha_col:
                 raise HTTPException(
                     status_code=422,
                     detail=(
-                        "Columnas requeridas no encontradas. Se necesita: DNI, Fecha, Asistencia. "
+                        "Columnas requeridas no encontradas. Se necesita: DNI, Fecha. "
+                        f"Columnas encontradas: {list(df.columns)}"
+                    )
+                )
+
+            # Determinar si vamos a calcular la asistencia automáticamente
+            calcular_asistencia_auto = primera_col and not asistencia_col
+            
+            if not asistencia_col and not calcular_asistencia_auto:
+                raise HTTPException(
+                    status_code=422,
+                    detail=(
+                        "No se encontró columna de Asistencia ni columnas de horario (Primera/Última). "
+                        "Proporciona una columna 'Asistencia' o 'Primera' (y opcionalmente 'Última'). "
                         f"Columnas encontradas: {list(df.columns)}"
                     )
                 )
@@ -645,7 +662,48 @@ async def subir_tareo_excel(
                         errores.append(f"Fila {idx + 2}: Fecha inválida")
                         continue
 
-                    asistencia = str(row[asistencia_col]).strip().upper()
+                    # Calcular asistencia automáticamente si no existe columna
+                    if calcular_asistencia_auto and primera_col:
+                        hora_entrada = None
+                        hora_salida = None
+                        
+                        try:
+                            if pd.notna(row[primera_col]):
+                                val_entrada = row[primera_col]
+                                # Convertir a string en formato HH:MM:SS
+                                if isinstance(val_entrada, str):
+                                    hora_entrada = val_entrada.strip()
+                                else:
+                                    # Si es time object o similar, convertir
+                                    import datetime as dt
+                                    if isinstance(val_entrada, dt.time):
+                                        hora_entrada = val_entrada.strftime("%H:%M:%S")
+                                    else:
+                                        hora_entrada = str(val_entrada).strip()
+                        except Exception as e:
+                            errores.append(f"Fila {idx + 2}: Error procesando hora de entrada - {str(e)}")
+                            hora_entrada = None
+                        
+                        try:
+                            if ultima_col and pd.notna(row[ultima_col]):
+                                val_salida = row[ultima_col]
+                                if isinstance(val_salida, str):
+                                    hora_salida = val_salida.strip()
+                                else:
+                                    import datetime as dt
+                                    if isinstance(val_salida, dt.time):
+                                        hora_salida = val_salida.strftime("%H:%M:%S")
+                                    else:
+                                        hora_salida = str(val_salida).strip()
+                        except Exception:
+                            hora_salida = None
+                        
+                        # Aplicar reglas automáticas de turnos
+                        asistencia = determinar_turno(hora_entrada, hora_salida)
+                    else:
+                        # Usar columna de asistencia si existe
+                        asistencia = str(row[asistencia_col]).strip().upper() if asistencia_col and pd.notna(row[asistencia_col]) else "F"
+                    
                     comentario = ""
                     if observacion_col and pd.notna(row[observacion_col]):
                         comentario = str(row[observacion_col]).strip()
