@@ -1,7 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  AlertCircle,
   ArrowRight,
   Building2,
   Calendar,
@@ -10,317 +9,397 @@ import {
   History,
   Megaphone,
   MessageCircle,
-  Sparkles,
   TrendingUp,
   Upload,
   UserCheck,
   Users,
+  AlertCircle,
+  Activity,
+  BarChart3,
+  Zap,
+  CheckCircle,
 } from "lucide-react";
+import toast from "react-hot-toast";
 import api from "../api";
 import { getRolLabel } from "../auth";
-import AdeccoLogo from "../components/AdeccoLogo";
 
 export default function Dashboard() {
   const user = api.getUser();
   const navigate = useNavigate();
   const [stats, setStats] = useState(null);
-  const [perfil, setPerfil] = useState(null);
+  const [tareoStats, setTareoStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
+  // Upload state
+  const [archivo, setArchivo] = useState(null);
+  const [cargando, setCargando] = useState(false);
+  const [resultado, setResultado] = useState(null);
+  const [cargandoStats, setCargandoStats] = useState(true);
+  const inputRef = useRef(null);
+
+  const isGDH = user?.rol?.toLowerCase() === "gdh";
+
+  // Cargar datos al montar
   useEffect(() => {
-    let mounted = true;
-
-    async function loadData() {
-      setLoading(true);
-      setError("");
-      try {
-        const [dashStats, profile] = await Promise.all([
-          api.getDashboardStats(),
-          api.getMiPerfil().catch(() => null),
-        ]);
-        if (!mounted) return;
-        setStats(dashStats);
-        setPerfil(profile);
-      } catch (err) {
-        if (!mounted) return;
-        setError(err.normalized?.message || "No se pudo cargar el dashboard");
-      } finally {
-        if (mounted) setLoading(false);
-      }
-    }
-
     loadData();
-    return () => {
-      mounted = false;
-    };
   }, []);
 
+  // Recargar stats después de subir tareo
+  useEffect(() => {
+    if (resultado?.exitoso) {
+      const timer = setTimeout(() => loadData(), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [resultado]);
+
+  const loadData = async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const [dashStats] = await Promise.all([
+        api.getDashboardStats().catch(() => null),
+      ]);
+      setStats(dashStats);
+
+      if (isGDH) {
+        const tareoStats = await api.get("/tareo/estadisticas").catch(() => null);
+        setTareoStats(tareoStats);
+      }
+    } catch (err) {
+      setError(err.normalized?.message || "Error al cargar datos");
+    } finally {
+      setLoading(false);
+      setCargandoStats(false);
+    }
+  };
+
+  const handleArchivoChange = (e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (!file.name.endsWith(".xlsx") && !file.name.endsWith(".xls")) {
+        toast.error("Solo se aceptan archivos Excel (.xlsx, .xls)");
+        return;
+      }
+      setArchivo(file);
+      setResultado(null);
+    }
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    const file = e.dataTransfer.files[0];
+    if (file && (file.name.endsWith(".xlsx") || file.name.endsWith(".xls"))) {
+      setArchivo(file);
+      setResultado(null);
+    } else {
+      toast.error("Solo se aceptan archivos Excel (.xlsx, .xls)");
+    }
+  };
+
+  const handleSubir = async () => {
+    if (!archivo) {
+      toast.error("Selecciona un archivo");
+      return;
+    }
+
+    setCargando(true);
+    try {
+      const res = await api.subirTareoExcel(archivo);
+      if (res.exitoso) {
+        setResultado(res);
+        toast.success("✅ Tareo sincronizado correctamente");
+        setArchivo(null);
+        if (inputRef.current) inputRef.current.value = "";
+      } else {
+        setResultado(res);
+        toast.error("Error: " + (res.error || "Error desconocido"));
+      }
+    } catch (err) {
+      const errorMsg = err.response?.data?.error || err.message || "Error al subir";
+      setResultado({ error: errorMsg });
+      toast.error(errorMsg);
+    } finally {
+      setCargando(false);
+    }
+  };
+
   const role = user?.rol?.toLowerCase();
-  const isGDH = role === "gdh";
   const isSupervisor = ["supervisor", "lider", "coordinador"].includes(role);
-  const positionLabel = role === "auxiliar" ? user?.cargo || "Cargo no definido" : getRolLabel(user?.rol);
 
   const greeting = useMemo(() => {
     const hour = new Date().getHours();
-    if (hour < 12) return "Buenos dias";
+    if (hour < 12) return "Buenos días";
     if (hour < 18) return "Buenas tardes";
     return "Buenas noches";
   }, []);
 
-  const metrics = useMemo(() => {
+  // Métricas para GDH
+  const gdkMetrics = useMemo(() => {
     if (!stats) return [];
-
-    if (isGDH) {
-      return [
-        { icon: UserCheck, label: "Activos", value: stats.activos ?? 0, tone: "emerald", detail: "Colaboradores habilitados", to: "/colaboradores?estado=activo" },
-        { icon: Users, label: "Inactivos", value: stats.inactivos ?? 0, tone: "slate", detail: "Fuera de operacion", to: "/colaboradores?estado=inactivo" },
-        { icon: Building2, label: "Areas", value: stats.areas ?? 0, tone: "blue", detail: "Unidades registradas", to: "/colaboradores?vista=areas" },
-        { icon: Megaphone, label: "Anuncios hoy", value: stats.anuncios_hoy ?? 0, tone: "amber", detail: "Comunicados publicados", to: "/anuncios" },
-        { icon: AlertCircle, label: "Pendientes", value: stats.obs_pendientes ?? 0, tone: "red", detail: "Observaciones abiertas", to: "/observaciones-gdh?estado=Pendiente" },
-      ];
-    }
-
-    if (isSupervisor) {
-      return [
-        { icon: Users, label: "Equipo", value: stats.colaboradores ?? 0, tone: "blue", detail: stats.area || user?.area || "Area asignada", to: "/personal" },
-        { icon: AlertCircle, label: "Pendientes", value: stats.obs_pendientes ?? 0, tone: "red", detail: "Observaciones por revisar", to: "/observaciones-supervisor?estado=Pendiente" },
-        { icon: TrendingUp, label: "Cobertura", value: "100%", tone: "emerald", detail: "Vista filtrada por area", to: "/personal" },
-      ];
-    }
-
     return [
-      { icon: Clock, label: "Tareo", value: stats.tareo_registros ?? 0, tone: "blue", detail: "Registros disponibles" },
-      { icon: MessageCircle, label: "Observaciones", value: stats.observaciones ?? 0, tone: "red", detail: "Solicitudes creadas" },
+      { icon: UserCheck, label: "Activos", value: stats.activos ?? 0, color: "emerald", to: "/colaboradores" },
+      { icon: Users, label: "Total", value: stats.inactivos ?? 0, color: "slate", to: "/colaboradores" },
+      { icon: Building2, label: "Areas", value: stats.areas ?? 0, color: "blue", to: "/colaboradores" },
+      { icon: AlertCircle, label: "Pendientes", value: stats.obs_pendientes ?? 0, color: "red", to: "/observaciones-gdh" },
     ];
-  }, [stats, isGDH, isSupervisor, user?.area]);
+  }, [stats]);
 
-  const actions = useMemo(() => {
+  const tareoMetrics = useMemo(() => {
+    if (!tareoStats) return [];
+    return [
+      { icon: TrendingUp, label: "Mañana", value: tareoStats.mañana ?? 0, color: "amber" },
+      { icon: Clock, label: "Tarde", value: tareoStats.tarde ?? 0, color: "orange" },
+      { icon: Zap, label: "Noche", value: tareoStats.noche ?? 0, color: "indigo" },
+      { icon: AlertCircle, label: "Faltas", value: tareoStats.faltas ?? 0, color: "red" },
+    ];
+  }, [tareoStats]);
+
+  // Acciones rápidas
+  const quickActions = useMemo(() => {
     if (isGDH) {
       return [
-        { icon: Upload, title: "Sincronizar Excel", desc: "Actualizar colaboradores, areas y cargos.", to: "/subir-excel" },
-        { icon: Upload, title: "Subir tareo", desc: "Importar asistencia operativa desde Excel.", to: "/tareo-upload" },
-        { icon: Users, title: "Colaboradores", desc: "Auditar personal activo e inactivo.", to: "/colaboradores" },
-        { icon: MessageCircle, title: "Observaciones", desc: "Gestionar observaciones globales.", to: "/observaciones-gdh" },
-        { icon: History, title: "Historial", desc: "Revisar trazabilidad de cambios.", to: "/historial" },
-        { icon: Megaphone, title: "Anuncios", desc: "Publicar comunicados internos.", to: "/anuncios" },
+        { icon: Upload, label: "Sincronizar usuarios", to: "/subir-excel", color: "blue" },
+        { icon: Users, label: "Ver colaboradores", to: "/colaboradores", color: "slate" },
+        { icon: Clock, label: "Registro de tareo", to: "/tareo", color: "emerald" },
+        { icon: History, label: "Ver historial", to: "/historial", color: "purple" },
       ];
     }
 
     if (isSupervisor) {
       return [
-        { icon: Users, title: "Mi personal", desc: "Gestionar el equipo asignado.", to: "/personal" },
-        { icon: MessageCircle, title: "Observaciones", desc: "Resolver solicitudes del area.", to: "/observaciones-supervisor" },
-        { icon: Megaphone, title: "Anuncios", desc: "Comunicar novedades al equipo.", to: "/anuncios" },
+        { icon: Users, label: "Mi equipo", to: "/personal", color: "blue" },
+        { icon: MessageCircle, label: "Observaciones", to: "/observaciones-supervisor", color: "red" },
       ];
     }
 
     return [
-      { icon: Calendar, title: "Mi calendario", desc: "Consultar asistencia mensual.", to: "/calendario" },
-      { icon: MessageCircle, title: "Observaciones", desc: "Crear y seguir solicitudes.", to: "/observaciones" },
-      { icon: Megaphone, title: "Anuncios", desc: "Leer comunicados internos.", to: "/anuncios" },
+      { icon: Clock, label: "Mi tareo", to: "/mi-tareo", color: "blue" },
+      { icon: MessageCircle, label: "Observaciones", to: "/observaciones", color: "red" },
     ];
   }, [isGDH, isSupervisor]);
 
-  if (loading) {
-    return <DashboardSkeleton />;
+  if (error && !loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <AlertCircle className="mx-auto mb-4 text-red-500" size={48} />
+          <p className="text-gray-600">{error}</p>
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div className="space-y-6 animate-fade-in">
-      <section className="overflow-hidden rounded-2xl border border-red-100 bg-white text-[#06264a] shadow-2xl shadow-slate-950/10">
-        <div className="h-2 bg-gradient-to-r from-[#e30613] to-[#b90020]" />
-        <div className="grid gap-6 p-5 sm:p-7 lg:grid-cols-[1fr_320px] lg:items-end">
-          <div className="min-w-0">
-            <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-[#e30613]/15 bg-[#e30613]/8 px-3 py-1 text-xs font-black text-[#e30613]">
-              <Sparkles size={14} />
-              {positionLabel} workspace
-            </div>
-            <div className="mb-3">
-              <AdeccoLogo className="text-[0.64rem]" />
-            </div>
-            <p className="text-sm font-bold text-slate-500">{greeting}</p>
-            <h1 className="mt-1 max-w-3xl text-3xl font-black tracking-tight sm:text-4xl">
-              {user?.nombre || "Usuario"}
-            </h1>
-            <p className="mt-3 max-w-2xl text-sm font-semibold leading-6 text-slate-600">
-              Onsite Oslo, Punta Negra. Panel operativo para asistencia, colaboradores, observaciones y comunicacion interna.
-            </p>
-          </div>
-
-          <div className="rounded-2xl border border-slate-200 bg-[#f8fafc] p-4">
-            <p className="text-xs font-black uppercase tracking-[0.18em] text-[#e30613]">Contexto actual</p>
-            <div className="mt-4 space-y-3">
-              <ContextRow label={role === "auxiliar" ? "Cargo" : "Rol"} value={positionLabel} />
-              <ContextRow label="Sede" value="Onsite Oslo, Punta Negra" />
-              {role !== "auxiliar" && <ContextRow label="Cargo" value={user?.cargo || "No definido"} />}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {error && (
-        <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
-          {error}
-        </div>
-      )}
-
-      <section className={`grid gap-3 animate-stagger ${metrics.length >= 5 ? "grid-cols-1 sm:grid-cols-2 xl:grid-cols-5" : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"}`}>
-        {metrics.map((metric) => (
-          <MetricCard key={metric.label} {...metric} onClick={metric.to ? () => navigate(metric.to) : undefined} />
-        ))}
-      </section>
-
-      <section className="grid gap-6 lg:grid-cols-[1fr_360px]">
+    <div className="space-y-8">
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
         <div>
-          <div className="mb-3 flex items-center justify-between gap-3">
-            <div>
-              <h2 className="text-lg font-black text-slate-950">Acciones rapidas</h2>
-              <p className="text-sm text-slate-500">Entradas principales segun tu rol.</p>
-            </div>
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 animate-stagger">
-            {actions.map((action) => (
-              <ActionCard key={action.title} {...action} onClick={() => navigate(action.to)} />
-            ))}
-          </div>
+          <p className="text-sm font-semibold text-[#e30613] uppercase tracking-wide">
+            {greeting}, {user?.nombre?.split(" ")[0]}
+          </p>
+          <h1 className="text-4xl font-black text-gray-900 mt-1">
+            {isGDH ? "Panel de Control" : "Bienvenido"}
+          </h1>
+          <p className="text-gray-500 mt-2">
+            {isGDH
+              ? "Gestiona colaboradores, tareos y observaciones"
+              : `${getRolLabel(user?.rol)}`}
+          </p>
         </div>
+      </div>
 
-        <aside className="space-y-3">
-          <div className="app-card rounded-2xl p-5">
-            <div className="mb-4 flex items-center gap-3">
-              <span className="grid h-10 w-10 place-items-center rounded-xl bg-emerald-50 text-emerald-600">
-                <CheckCircle2 size={20} />
-              </span>
-              <div>
-                <h2 className="font-black text-slate-950">Estado operativo</h2>
-                <p className="text-sm text-slate-500">Servicios principales activos.</p>
+      {/* Grid Principal */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Columna Izquierda - Métricas y Upload (GDH) */}
+        {isGDH && (
+          <div className="lg:col-span-2 space-y-6">
+            {/* Métricas de Colaboradores */}
+            <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-10 h-10 rounded-lg bg-red-50 flex items-center justify-center">
+                  <Users size={20} className="text-red-600" />
+                </div>
+                <h2 className="text-lg font-bold text-gray-900">Colaboradores</h2>
+              </div>
+
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {gdkMetrics.map((metric, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => navigate(metric.to)}
+                    className={`p-4 rounded-xl border border-gray-100 hover:border-${metric.color}-200 hover:bg-${metric.color}-50 transition group cursor-pointer text-left`}
+                  >
+                    <p className={`text-xs font-medium text-gray-500 group-hover:text-${metric.color}-600`}>
+                      {metric.label}
+                    </p>
+                    <p className={`text-2xl font-black text-${metric.color}-600 mt-1`}>
+                      {metric.value.toLocaleString()}
+                    </p>
+                  </button>
+                ))}
               </div>
             </div>
-            <div className="space-y-3">
-              <HealthRow label="API" value="Online" />
-              <HealthRow label="Sesion" value="Protegida" />
-              <HealthRow label="Base local" value="Disponible" />
+
+            {/* Sección de Upload */}
+            <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-10 h-10 rounded-lg bg-red-50 flex items-center justify-center">
+                  <Upload size={20} className="text-red-600" />
+                </div>
+                <h2 className="text-lg font-bold text-gray-900">Sincronizar Tareo</h2>
+              </div>
+
+              <div
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={handleDrop}
+                onClick={() => inputRef.current?.click()}
+                className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center cursor-pointer hover:border-red-400 hover:bg-red-50 transition group"
+              >
+                <div className="flex justify-center mb-4">
+                  <Upload size={32} className="text-gray-400 group-hover:text-red-600 transition" />
+                </div>
+                <p className="font-semibold text-gray-900">Arrastra tu Excel aquí</p>
+                <p className="text-sm text-gray-500 mt-1">o haz clic para seleccionar</p>
+                <p className="text-xs text-gray-400 mt-2">Formato: .xlsx, .xls</p>
+                <input
+                  ref={inputRef}
+                  type="file"
+                  accept=".xlsx,.xls"
+                  onChange={handleArchivoChange}
+                  hidden
+                />
+              </div>
+
+              {archivo && (
+                <div className="mt-4 p-4 bg-emerald-50 border border-emerald-200 rounded-lg flex items-center gap-3">
+                  <CheckCircle size={20} className="text-emerald-600 flex-shrink-0" />
+                  <div className="min-w-0 flex-1">
+                    <p className="font-semibold text-emerald-900 truncate">{archivo.name}</p>
+                    <p className="text-xs text-emerald-700">{(archivo.size / 1024).toFixed(1)} KB</p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setArchivo(null);
+                      if (inputRef.current) inputRef.current.value = "";
+                    }}
+                    className="text-emerald-600 hover:text-emerald-700 font-bold"
+                  >
+                    ✕
+                  </button>
+                </div>
+              )}
+
+              {archivo && (
+                <button
+                  onClick={handleSubir}
+                  disabled={cargando}
+                  className="w-full mt-4 bg-red-600 text-white py-3 rounded-lg font-semibold hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                >
+                  {cargando ? "Procesando..." : "Sincronizar"}
+                </button>
+              )}
+
+              {resultado?.exitoso && (
+                <div className="mt-4 p-4 bg-emerald-50 border border-emerald-200 rounded-lg">
+                  <div className="flex items-center gap-2 mb-3">
+                    <CheckCircle2 size={18} className="text-emerald-600" />
+                    <p className="font-semibold text-emerald-900">Sincronización exitosa</p>
+                  </div>
+                  <div className="grid grid-cols-3 gap-3 text-sm">
+                    <div>
+                      <p className="text-emerald-700 font-medium">{resultado.creados || 0}</p>
+                      <p className="text-xs text-emerald-600">Creados</p>
+                    </div>
+                    <div>
+                      <p className="text-emerald-700 font-medium">{resultado.actualizados || 0}</p>
+                      <p className="text-xs text-emerald-600">Actualizados</p>
+                    </div>
+                    <div>
+                      <p className="text-emerald-700 font-medium">{resultado.errores?.length || 0}</p>
+                      <p className="text-xs text-emerald-600">Errores</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {resultado?.error && (
+                <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+                  <p className="text-sm text-red-700">{resultado.error}</p>
+                </div>
+              )}
             </div>
           </div>
+        )}
 
-          {!isGDH && !isSupervisor && perfil && (
-            <div className="app-card rounded-2xl p-5">
-              <h2 className="font-black text-slate-950">Resumen personal</h2>
-              <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
-                <InfoTile label="DNI" value={perfil.dni} />
-                <InfoTile label="Ingreso" value={perfil.fecha_ingreso || "-"} />
-                <InfoTile label="Vacaciones" value={`${perfil.vacaciones_pendientes ?? 0} dias`} />
-                <InfoTile label="Estado" value={perfil.estado || "Activo"} />
+        {/* Columna Derecha */}
+        <div className="space-y-6">
+          {/* Tareo Stats (GDH) */}
+          {isGDH && tareoStats && (
+            <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-10 h-10 rounded-lg bg-indigo-50 flex items-center justify-center">
+                  <BarChart3 size={20} className="text-indigo-600" />
+                </div>
+                <h2 className="text-lg font-bold text-gray-900">Asistencia</h2>
               </div>
+
+              <div className="space-y-3">
+                {tareoMetrics.map((metric, idx) => (
+                  <div key={idx} className={`p-4 rounded-xl bg-${metric.color}-50 border border-${metric.color}-100`}>
+                    <div className="flex items-center justify-between">
+                      <p className={`text-sm font-medium text-${metric.color}-700`}>{metric.label}</p>
+                      <p className={`text-xl font-black text-${metric.color}-600`}>
+                        {metric.value.toLocaleString()}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
               <button
-                type="button"
-                onClick={() => navigate("/mi-perfil")}
-                className="app-button mt-4 w-full border border-slate-200 bg-white text-slate-700 hover:border-[#e30613]/25 hover:text-[#e30613]"
+                onClick={() => navigate("/tareo")}
+                className="w-full mt-4 px-4 py-2 rounded-lg border border-gray-200 hover:bg-gray-50 transition font-medium text-gray-700 flex items-center justify-center gap-2"
               >
-                Ver perfil
+                Ver detalles
                 <ArrowRight size={16} />
               </button>
             </div>
           )}
-        </aside>
-      </section>
-    </div>
-  );
-}
 
-function DashboardSkeleton() {
-  return (
-    <div className="space-y-6">
-      <div className="skeleton h-56 rounded-2xl" />
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
-        {[1, 2, 3, 4, 5].map((item) => (
-          <div key={item} className="skeleton h-32 rounded-2xl" />
-        ))}
-      </div>
-      <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          {[1, 2, 3, 4, 5, 6].map((item) => (
-            <div key={item} className="skeleton h-32 rounded-2xl" />
-          ))}
+          {/* Acciones Rápidas */}
+          <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
+            <h2 className="text-lg font-bold text-gray-900 mb-4">Acciones rápidas</h2>
+
+            <div className="space-y-2">
+              {quickActions.map((action, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => navigate(action.to)}
+                  className={`w-full flex items-center gap-3 p-3 rounded-lg border border-gray-100 hover:border-${action.color}-300 hover:bg-${action.color}-50 transition group`}
+                >
+                  <action.icon size={18} className={`text-${action.color}-600`} />
+                  <span className="font-medium text-gray-900 group-hover:text-gray-900">{action.label}</span>
+                  <ArrowRight size={16} className={`ml-auto text-gray-300 group-hover:text-${action.color}-600`} />
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Info Card */}
+          <div className="bg-gradient-to-br from-red-50 to-red-100 rounded-2xl p-6 border border-red-200">
+            <div className="flex items-start gap-3">
+              <AlertCircle size={20} className="text-red-600 flex-shrink-0 mt-1" />
+              <div>
+                <h3 className="font-bold text-red-900 mb-1">Información</h3>
+                <p className="text-sm text-red-700">
+                  Todos los cambios se guardan automáticamente. El sistema actualiza las asistencias en tiempo real.
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
-        <div className="skeleton h-64 rounded-2xl" />
       </div>
-    </div>
-  );
-}
-
-function MetricCard({ icon: Icon, label, value, detail, tone, onClick }) {
-  const tones = {
-    emerald: "bg-emerald-50 text-emerald-700 border-emerald-100",
-    slate: "bg-slate-50 text-slate-700 border-slate-100",
-    blue: "bg-blue-50 text-blue-700 border-blue-100",
-    amber: "bg-amber-50 text-amber-700 border-amber-100",
-    red: "bg-red-50 text-[#e30613] border-red-100",
-  };
-
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`app-card rounded-2xl p-4 text-left transition hover:-translate-y-0.5 hover:shadow-xl ${onClick ? "cursor-pointer hover:border-[#e30613]/25" : "cursor-default"}`}
-    >
-      <div className={`mb-4 grid h-11 w-11 place-items-center rounded-xl border ${tones[tone] || tones.slate}`}>
-        <Icon size={20} />
-      </div>
-      <p className="text-3xl font-black tracking-tight text-slate-950">{value}</p>
-      <p className="mt-1 text-sm font-bold text-slate-700">{label}</p>
-      <p className="mt-1 text-xs leading-5 text-slate-500">{detail}</p>
-    </button>
-  );
-}
-
-function ActionCard({ icon: Icon, title, desc, onClick }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="app-card group rounded-2xl p-4 text-left transition hover:-translate-y-0.5 hover:border-[#e30613]/25 hover:shadow-xl"
-    >
-      <div className="flex items-start gap-3">
-        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-[#06264a] text-white transition group-hover:bg-[#e30613]">
-          <Icon size={19} />
-        </span>
-        <span className="min-w-0 flex-1">
-          <span className="flex items-center gap-2 text-sm font-black text-slate-950">
-            <span className="truncate">{title}</span>
-            <ArrowRight size={15} className="ml-auto text-slate-300 transition group-hover:text-[#e30613]" />
-          </span>
-          <span className="mt-1 block text-xs leading-5 text-slate-500">{desc}</span>
-        </span>
-      </div>
-    </button>
-  );
-}
-
-function ContextRow({ label, value }) {
-  return (
-    <div className="flex items-center justify-between gap-3 text-sm">
-      <span className="text-slate-500">{label}</span>
-      <span className="truncate font-black text-[#06264a]">{value}</span>
-    </div>
-  );
-}
-
-function HealthRow({ label, value }) {
-  return (
-    <div className="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2 text-sm">
-      <span className="font-semibold text-slate-600">{label}</span>
-      <span className="font-black text-emerald-600">{value}</span>
-    </div>
-  );
-}
-
-function InfoTile({ label, value }) {
-  return (
-    <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-      <p className="text-xs font-bold uppercase tracking-wide text-slate-400">{label}</p>
-      <p className="mt-1 truncate font-black text-slate-800">{value}</p>
     </div>
   );
 }

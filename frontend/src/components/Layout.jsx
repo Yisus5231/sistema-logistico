@@ -25,7 +25,6 @@ import AdeccoLogo from "./AdeccoLogo";
 
 const NAV_ITEMS = [
   { to: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
-  { to: "/panel-rh", icon: BarChart3, label: "Panel RH", roles: ["gdh"] },
   { to: "/mi-tareo", icon: Clock, label: "Mi Tareo", roles: ["Auxiliar"] },
   { to: "/personal", icon: Users, label: "Mi personal", roles: ["Supervisor"] },
   { to: "/colaboradores", icon: Users, label: "Colaboradores", roles: ["gdh", "Lider", "Coordinador"] },
@@ -34,7 +33,6 @@ const NAV_ITEMS = [
   { to: "/observaciones-supervisor", icon: MessageCircle, label: "Observaciones", roles: ["Supervisor"] },
   { to: "/observaciones-gdh", icon: MessageCircle, label: "Observaciones", roles: ["gdh"] },
   { to: "/subir-excel", icon: Upload, label: "Sincronizar Excel", roles: ["gdh"] },
-  { to: "/tareo-upload", icon: Upload, label: "Subir tareo", roles: ["gdh"] },
   { to: "/tareo", icon: Clock, label: "Registro tareo", roles: ["gdh"] },
   { to: "/calendario", icon: Calendar, label: "Calendario" },
   { to: "/historial", icon: History, label: "Historial", roles: ["gdh"] },
