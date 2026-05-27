@@ -669,6 +669,15 @@ async def subir_tareo_excel(
                     )
                 )
 
+            # OPTIMIZACIÓN: Cachear usuarios de una vez
+            usuarios_cache = {u.dni: u.nombre for u in db.query(Usuario).all()}
+            
+            # OPTIMIZACIÓN: Mover imports fuera del loop
+            import datetime as dt
+            
+            registros_crear = []
+            registros_actualizar = []
+            
             for idx, row in df.iterrows():
                 try:
                     dni = str(row[dni_col]).strip()
@@ -690,16 +699,12 @@ async def subir_tareo_excel(
                         try:
                             if pd.notna(row[primera_col]):
                                 val_entrada = row[primera_col]
-                                # Convertir a string en formato HH:MM:SS
                                 if isinstance(val_entrada, str):
                                     hora_entrada = val_entrada.strip()
+                                elif isinstance(val_entrada, dt.time):
+                                    hora_entrada = val_entrada.strftime("%H:%M:%S")
                                 else:
-                                    # Si es time object o similar, convertir
-                                    import datetime as dt
-                                    if isinstance(val_entrada, dt.time):
-                                        hora_entrada = val_entrada.strftime("%H:%M:%S")
-                                    else:
-                                        hora_entrada = str(val_entrada).strip()
+                                    hora_entrada = str(val_entrada).strip()
                         except Exception as e:
                             errores.append(f"Fila {idx + 2}: Error procesando hora de entrada - {str(e)}")
                             hora_entrada = None
@@ -709,12 +714,10 @@ async def subir_tareo_excel(
                                 val_salida = row[ultima_col]
                                 if isinstance(val_salida, str):
                                     hora_salida = val_salida.strip()
+                                elif isinstance(val_salida, dt.time):
+                                    hora_salida = val_salida.strftime("%H:%M:%S")
                                 else:
-                                    import datetime as dt
-                                    if isinstance(val_salida, dt.time):
-                                        hora_salida = val_salida.strftime("%H:%M:%S")
-                                    else:
-                                        hora_salida = str(val_salida).strip()
+                                    hora_salida = str(val_salida).strip()
                         except Exception:
                             hora_salida = None
                         
@@ -728,19 +731,21 @@ async def subir_tareo_excel(
                     if observacion_col and pd.notna(row[observacion_col]):
                         comentario = str(row[observacion_col]).strip()
 
-                    usr = db.query(Usuario).filter(Usuario.dni == dni).first()
-                    nombre = usr.nombre if usr else dni
+                    # OPTIMIZACIÓN: Usar cache en lugar de query
+                    nombre = usuarios_cache.get(dni, dni)
 
-                    tareo = db.query(Tareo).filter(Tareo.dni == dni, Tareo.fecha == fecha).first()
+                    # OPTIMIZACIÓN: Verificar y agrupar para bulk operations
+                    tareo_existente = db.query(Tareo).filter(Tareo.dni == dni, Tareo.fecha == fecha).first()
 
-                    if tareo:
-                        tareo.asistencia = asistencia
+                    if tareo_existente:
+                        tareo_existente.asistencia = asistencia
                         if comentario:
-                            tareo.comentario_gdh = comentario
-                        tareo.fecha_actualizacion = datetime.utcnow()
+                            tareo_existente.comentario_gdh = comentario
+                        tareo_existente.fecha_actualizacion = datetime.utcnow()
+                        registros_actualizar.append(tareo_existente)
                         actualizados += 1
                     else:
-                        db.add(Tareo(
+                        registros_crear.append(Tareo(
                             dni=dni, nombre=nombre, fecha=fecha,
                             asistencia=asistencia, comentario_gdh=comentario,
                             origen="excel_upload"
@@ -749,6 +754,10 @@ async def subir_tareo_excel(
 
                 except Exception as row_error:
                     errores.append(f"Fila {idx + 2}: {str(row_error)}")
+            
+            # OPTIMIZACIÓN: Agregar todos los registros de una vez
+            if registros_crear:
+                db.add_all(registros_crear)
 
         db.commit()
         return {
