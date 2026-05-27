@@ -135,15 +135,6 @@ export default function MiPerfil() {
             </button>
           </div>
         </div>
-      ) : (
-        <div className="bg-amber-50 rounded-xl border border-amber-200 p-5">
-          <div className="flex items-start gap-3">
-            <AlertCircle size={18} className="text-amber-600 mt-0.5 flex-shrink-0" />
-            <p className="text-amber-700 text-sm">
-              Los auxiliares no pueden cambiar su contraseña. Contacta a RH si necesitas soporte.
-            </p>
-          </div>
-        </div>
       )}
 
       {/* Change Birthday */}
