@@ -201,21 +201,21 @@ export default function TareoUpload() {
           <li>• <strong>Empleado</strong> - Nombre completo del colaborador (o similar)</li>
           <li>• <strong>Identificación</strong> - DNI/Documento de identidad (ej: 12345678)</li>
           <li>• <strong>Fecha</strong> - Fecha del registro (formato DD/MM/YYYY)</li>
-          <li>• <strong>Primera</strong> - Hora de entrada (formato HH:MM:SS, ej: 06:30:00)</li>
-          <li>• <strong>Última</strong> - Hora de salida (formato HH:MM:SS, opcional)</li>
+          <li>• <strong>Primera</strong> - Primera marcación del día; para turno noche puede ser la salida de la mañana</li>
+          <li>• <strong>Última</strong> - Última marcación del día; para turno noche puede ser el ingreso nocturno</li>
         </ul>
 
         <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
           <p className="text-sm font-semibold text-blue-800 mb-2">✨ Asistencia Automática:</p>
           <p className="text-xs text-blue-700 mb-2">
-            El sistema calcula automáticamente el código de asistencia basado en los horarios:
+            El sistema calcula automáticamente el turno interpretando las marcaciones del día:
           </p>
           <ul className="text-xs text-blue-700 ml-4 space-y-1">
-            <li>• <strong>M</strong> (Mañana): Entrada 05:00-13:00</li>
-            <li>• <strong>T</strong> (Tarde): Entrada 12:00-15:00 (y salida &lt; 16:00)</li>
-            <li>• <strong>N</strong> (Noche): Entrada 18:00-23:00</li>
+            <li>• <strong>M</strong> (Mañana): Primera marcación entre 06:30 y 09:00</li>
+            <li>• <strong>T</strong> (Tarde): Primera marcación entre 13:00 y 14:59</li>
+            <li>• <strong>N</strong> (Noche): Ingreso desde 18:30 o salida registrada entre 06:00 y 06:29</li>
             <li>• <strong>F</strong> (Falta): Sin marcación o fuera de rango</li>
-            <li>• <strong>⚠️ Especial:</strong> Entrada 12:00-15:00 + Salida ≥ 16:00 → M (Mañana extendida)</li>
+            <li>• <strong>Especial:</strong> Si la última marcación es desde 18:30, prevalece turno noche aunque la primera sea por la mañana</li>
           </ul>
         </div>
 
