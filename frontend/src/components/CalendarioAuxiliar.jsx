@@ -72,7 +72,7 @@ const STATUS = {
     group: "permisos",
   },
   FE: {
-    label: "Feriado Descansado",
+    label: "Feriado",
     icon: "🎉",
     className: "bg-amber-100 text-amber-950 border-amber-300 ring-amber-200",
     dot: "bg-amber-400",
@@ -90,6 +90,13 @@ const STATUS = {
     icon: "😴",
     className: "bg-slate-200 text-slate-800 border-slate-300 ring-slate-200",
     dot: "bg-slate-500",
+    group: "descansos",
+  },
+  D: {
+    label: "Descanso semanal",
+    icon: "😴",
+    className: "bg-slate-100 text-slate-700 border-slate-300 ring-slate-200",
+    dot: "bg-slate-400",
     group: "descansos",
   },
   BAP: {
@@ -147,6 +154,56 @@ function pad(value) {
 
 function formatDate(date) {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
+const PERU_NATIONAL_HOLIDAYS = {
+  "01-01": "Año Nuevo",
+  "05-01": "Día del Trabajo",
+  "06-07": "Batalla de Arica y Día de la Bandera",
+  "06-29": "Día de San Pedro y San Pablo",
+  "07-23": "Día de la Fuerza Aérea del Perú",
+  "07-28": "Fiestas Patrias",
+  "07-29": "Fiestas Patrias",
+  "08-06": "Batalla de Junín",
+  "08-30": "Santa Rosa de Lima",
+  "10-08": "Combate de Angamos",
+  "11-01": "Día de Todos los Santos",
+  "12-08": "Inmaculada Concepción",
+  "12-09": "Batalla de Ayacucho",
+  "12-25": "Navidad",
+};
+
+function easterSunday(year) {
+  const a = year % 19;
+  const b = Math.floor(year / 100);
+  const c = year % 100;
+  const d = Math.floor(b / 4);
+  const e = b % 4;
+  const f = Math.floor((b + 8) / 25);
+  const g = Math.floor((b - f + 1) / 3);
+  const h = (19 * a + b - d - g + 15) % 30;
+  const i = Math.floor(c / 4);
+  const k = c % 4;
+  const l = (32 + 2 * e + 2 * i - h - k) % 7;
+  const m = Math.floor((a + 11 * h + 22 * l) / 451);
+  const month = Math.floor((h + l - 7 * m + 114) / 31);
+  const day = ((h + l - 7 * m + 114) % 31) + 1;
+  return new Date(year, month - 1, day);
+}
+
+function peruHolidayName(date) {
+  const monthDay = `${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+  if (PERU_NATIONAL_HOLIDAYS[monthDay]) return PERU_NATIONAL_HOLIDAYS[monthDay];
+
+  const easter = easterSunday(date.getFullYear());
+  const holyThursday = new Date(easter);
+  holyThursday.setDate(easter.getDate() - 3);
+  const goodFriday = new Date(easter);
+  goodFriday.setDate(easter.getDate() - 2);
+
+  if (formatDate(date) === formatDate(holyThursday)) return "Jueves Santo";
+  if (formatDate(date) === formatDate(goodFriday)) return "Viernes Santo";
+  return null;
 }
 
 function parseApiDate(value) {
@@ -264,10 +321,15 @@ export default function CalendarioAuxiliar() {
       const date = new Date(year, month, day);
       const key = formatDate(date);
       const record = recordsByDate.get(key);
-      const missingAttendance = !record && key < todayKey;
-      const code = missingAttendance ? "F" : normalizeCode(record?.asistencia);
+      const holidayName = peruHolidayName(date);
+      const isWeeklyRest = date.getDay() === 0;
+      const missingAttendance = !record && key < todayKey && !holidayName && !isWeeklyRest;
+      const inferredCode = holidayName ? "FE" : isWeeklyRest ? "D" : missingAttendance ? "F" : "";
+      const code = record ? normalizeCode(record.asistencia) : inferredCode;
       const status = STATUS[code] || (record ? { ...DEFAULT_STATUS, label: code || "Registro" } : DEFAULT_STATUS);
-      cells.push({ key, day, date, record, code, status, missingAttendance, empty: false });
+      cells.push({
+        key, day, date, record, code, status, holidayName, isWeeklyRest, missingAttendance, empty: false,
+      });
     }
 
     while (cells.length % 7 !== 0) {
@@ -510,7 +572,7 @@ function CalendarCell({ item, today, loading, onClick }) {
   const hasStatus = Boolean(item.code);
   const isToday = isSameDay(item.date, today);
   const tooltip = hasStatus
-    ? `${status.label}${item.record?.comentario_gdh ? ` - ${item.record.comentario_gdh}` : ""}`
+    ? `${status.label}${item.holidayName ? ` - ${item.holidayName}` : ""}${item.record?.comentario_gdh ? ` - ${item.record.comentario_gdh}` : ""}`
     : "Sin registro";
 
   return (
@@ -601,6 +663,7 @@ function DayModal({ day, onClose }) {
           <DetailTile icon={CalendarDays} label="Fecha" value={formatDate(day.date)} />
           <DetailTile icon={Clock3} label="Turno" value={status.label} />
           <DetailTile label="Asistencia" value={day.code || "Sin registro"} />
+          {day.holidayName && <DetailTile label="Feriado" value={day.holidayName} />}
           <DetailTile label="Horas extras" value={record?.horas_extras || record?.horas_extra || "0"} />
           <DetailTile label="Estado" value={record?.estado || record?.estado_revision || "Pendiente de cierre"} />
           <DetailTile label="Aprobacion" value={record?.aprobado ? "Aprobado" : record?.rechazado ? "Rechazado" : "Sin revision"} />
