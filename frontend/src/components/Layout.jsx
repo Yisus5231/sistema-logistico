@@ -16,6 +16,7 @@ import {
   User,
   Users,
   X,
+  BarChart3,
 } from "lucide-react";
 import Notificaciones from "./Notificaciones";
 import api from "../api";
@@ -24,6 +25,8 @@ import AdeccoLogo from "./AdeccoLogo";
 
 const NAV_ITEMS = [
   { to: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
+  { to: "/panel-rh", icon: BarChart3, label: "Panel RH", roles: ["gdh"] },
+  { to: "/mi-tareo", icon: Clock, label: "Mi Tareo", roles: ["Auxiliar"] },
   { to: "/personal", icon: Users, label: "Mi personal", roles: ["Supervisor"] },
   { to: "/colaboradores", icon: Users, label: "Colaboradores", roles: ["gdh", "Lider", "Coordinador"] },
   { to: "/anuncios", icon: Megaphone, label: "Anuncios" },

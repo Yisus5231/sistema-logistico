@@ -814,17 +814,38 @@ def obtener_estadisticas_tareo(
     db: Session = Depends(get_db),
     usuario: Usuario = Depends(obtener_usuario_actual)
 ):
-    """Obtiene estadísticas de tareo"""
+    """Obtiene estadísticas de tareo con detalles por turno"""
     if es_rol(usuario.rol, "Auxiliar"):
         registros = db.query(Tareo).filter(Tareo.dni == usuario.dni).all()
     else:
         registros = db.query(Tareo).all()
 
-    stats = {}
-    for reg in registros:
-        stats[reg.asistencia] = stats.get(reg.asistencia, 0) + 1
+    # Contar por tipo de asistencia
+    asistido_dia = sum(1 for r in registros if r.asistencia == "M")
+    asistido_tarde = sum(1 for r in registros if r.asistencia == "T")
+    asistido_noche = sum(1 for r in registros if r.asistencia == "N")
+    vacaciones = sum(1 for r in registros if r.asistencia == "V")
+    faltas = sum(1 for r in registros if r.asistencia == "F")
+    licencias = sum(1 for r in registros if r.asistencia == "L")
 
-    return {"total": len(registros), "por_tipo": stats}
+    # Registros de hoy
+    hoy = date.today()
+    registros_hoy = sum(1 for r in registros if r.fecha.date() == hoy)
+
+    # Último archivo procesado
+    ultimo_archivo = db.query(SincronizacionExcel).order_by(SincronizacionExcel.fecha_sincronizacion.desc()).first()
+
+    return {
+        "asistido_dia": asistido_dia,
+        "asistido_tarde": asistido_tarde,
+        "asistido_noche": asistido_noche,
+        "vacaciones": vacaciones,
+        "faltas": faltas,
+        "licencias": licencias,
+        "total_registros": len(registros),
+        "registros_hoy": registros_hoy,
+        "ultimo_archivo": ultimo_archivo.fecha_sincronizacion if ultimo_archivo else None,
+    }
 
 
 @app.put("/tareo/{tareo_id}")

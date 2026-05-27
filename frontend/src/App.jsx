@@ -15,6 +15,8 @@ import Personal from "./pages/Personal";
 import ObservacionesAuxiliar from "./pages/ObservacionesAuxiliar";
 import ObservacionesSupervisor from "./pages/ObservacionesSupervisor";
 import ObservacionesGDH from "./pages/ObservacionesGDH";
+import PanelRH from "./pages/PanelRH";
+import MiTareo from "./pages/MiTareo";
 import Layout from "./components/Layout";
 import ProtectedRoute from "./components/ProtectedRoute";
 
@@ -29,6 +31,16 @@ export default function App() {
         <Route path="/admin" element={
           <ProtectedRoute roles={["gdh"]}>
             <Admin />
+          </ProtectedRoute>
+        } />
+        <Route path="/panel-rh" element={
+          <ProtectedRoute roles={["gdh"]}>
+            <PanelRH />
+          </ProtectedRoute>
+        } />
+        <Route path="/mi-tareo" element={
+          <ProtectedRoute roles={["Auxiliar"]}>
+            <MiTareo />
           </ProtectedRoute>
         } />
         <Route path="/colaboradores" element={
