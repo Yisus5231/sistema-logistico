@@ -52,11 +52,11 @@ export default function DashboardAuxiliar() {
 
   return (
     <div className="space-y-0">
-      {/* Grid Principal - 2 columnas */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 min-h-screen">
+      {/* Grid Principal - 2 columnas desiguales */}
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 min-h-screen">
         
-        {/* COLUMNA IZQUIERDA */}
-        <div className="space-y-6 p-6 lg:p-0">
+        {/* COLUMNA IZQUIERDA - 2 de 5 (40%) */}
+        <div className="lg:col-span-2 space-y-6 p-6 lg:p-0">
           {/* Header */}
           <div>
             <p className="text-sm font-semibold text-[#e30613] uppercase tracking-wide">
@@ -100,7 +100,7 @@ export default function DashboardAuxiliar() {
         </div>
 
         {/* COLUMNA DERECHA */}
-        <div className="space-y-6 p-6 lg:p-0">
+        <div className="lg:col-span-3 space-y-6 p-6 lg:p-0">
           
           {/* Anuncios Card Grande */}
           <div className="bg-white rounded-2xl border-2 border-red-500 shadow-sm h-96 flex flex-col">
