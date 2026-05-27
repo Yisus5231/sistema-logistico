@@ -15,7 +15,6 @@ import Personal from "./pages/Personal";
 import ObservacionesAuxiliar from "./pages/ObservacionesAuxiliar";
 import ObservacionesSupervisor from "./pages/ObservacionesSupervisor";
 import ObservacionesGDH from "./pages/ObservacionesGDH";
-import MiTareo from "./pages/MiTareo";
 import Layout from "./components/Layout";
 import ProtectedRoute from "./components/ProtectedRoute";
 
@@ -41,11 +40,7 @@ export default function App() {
             <Admin />
           </ProtectedRoute>
         } />
-        <Route path="/mi-tareo" element={
-          <ProtectedRoute roles={["Auxiliar"]}>
-            <MiTareo />
-          </ProtectedRoute>
-        } />
+        <Route path="/mi-tareo" element={<Navigate to="/calendario" replace />} />
         <Route path="/colaboradores" element={
           <ProtectedRoute roles={["gdh", "Supervisor", "Lider", "Coordinador"]}>
             <Colaboradores />

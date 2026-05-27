@@ -25,7 +25,6 @@ import AdeccoLogo from "./AdeccoLogo";
 
 const NAV_ITEMS = [
   { to: "/dashboard", icon: LayoutDashboard, label: "Dashboard", getRolTo: (role) => role === "auxiliar" ? "/dashboard-auxiliar" : "/dashboard" },
-  { to: "/mi-tareo", icon: Clock, label: "Mi Tareo", roles: ["Auxiliar"] },
   { to: "/personal", icon: Users, label: "Mi personal", roles: ["Supervisor"] },
   { to: "/colaboradores", icon: Users, label: "Colaboradores", roles: ["gdh", "Lider", "Coordinador"] },
   { to: "/anuncios", icon: Megaphone, label: "Anuncios", roles: ["gdh", "Supervisor", "Lider", "Coordinador"] },

@@ -174,7 +174,7 @@ export default function Dashboard() {
     }
 
     return [
-      { icon: Clock, label: "Mi tareo", to: "/mi-tareo", color: "blue" },
+      { icon: Clock, label: "Calendario", to: "/calendario", color: "blue" },
       { icon: MessageCircle, label: "Observaciones", to: "/observaciones", color: "red" },
     ];
   }, [isGDH, isSupervisor]);

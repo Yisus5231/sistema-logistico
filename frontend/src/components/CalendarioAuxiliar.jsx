@@ -183,6 +183,7 @@ export default function CalendarioAuxiliar() {
   const year = cursor.getFullYear();
   const month = cursor.getMonth();
   const today = new Date();
+  const todayKey = formatDate(today);
   const { start, end } = monthBounds(cursor);
   const startKey = formatDate(start);
   const endKey = formatDate(end);
@@ -263,9 +264,10 @@ export default function CalendarioAuxiliar() {
       const date = new Date(year, month, day);
       const key = formatDate(date);
       const record = recordsByDate.get(key);
-      const code = normalizeCode(record?.asistencia);
+      const missingAttendance = !record && key < todayKey;
+      const code = missingAttendance ? "F" : normalizeCode(record?.asistencia);
       const status = STATUS[code] || (record ? { ...DEFAULT_STATUS, label: code || "Registro" } : DEFAULT_STATUS);
-      cells.push({ key, day, date, record, code, status, empty: false });
+      cells.push({ key, day, date, record, code, status, missingAttendance, empty: false });
     }
 
     while (cells.length % 7 !== 0) {
@@ -273,7 +275,7 @@ export default function CalendarioAuxiliar() {
     }
 
     return cells;
-  }, [month, recordsByDate, year]);
+  }, [month, recordsByDate, todayKey, year]);
 
   const stats = useMemo(() => {
     const base = {
@@ -286,8 +288,9 @@ export default function CalendarioAuxiliar() {
       dia: 0,
     };
 
-    registros.forEach((record) => {
-      const code = normalizeCode(record.asistencia);
+    calendarDays.forEach((day) => {
+      if (day.empty) return;
+      const code = day.code;
       const status = STATUS[code];
       if (!status) return;
       if (["M", "N", "T", "FT"].includes(code)) base.trabajados += 1;
@@ -300,7 +303,7 @@ export default function CalendarioAuxiliar() {
     });
 
     return base;
-  }, [registros]);
+  }, [calendarDays]);
 
   const yearOptions = useMemo(() => {
     const currentYear = new Date().getFullYear();
@@ -308,10 +311,10 @@ export default function CalendarioAuxiliar() {
   }, []);
 
   const usedStatuses = useMemo(() => {
-    const used = new Set(registros.map((record) => normalizeCode(record.asistencia)).filter(Boolean));
+    const used = new Set(calendarDays.map((day) => day.code).filter(Boolean));
     const ordered = Object.entries(STATUS).filter(([code]) => used.has(code));
     return ordered.length ? ordered : Object.entries(STATUS);
-  }, [registros]);
+  }, [calendarDays]);
 
   const goToday = () => {
     const current = new Date();
@@ -504,10 +507,10 @@ function CalendarCell({ item, today, loading, onClick }) {
   if (item.empty) return <div className="min-h-[58px] rounded-xl sm:min-h-[76px]" />;
 
   const status = item.status || DEFAULT_STATUS;
-  const hasRecord = Boolean(item.record);
+  const hasStatus = Boolean(item.code);
   const isToday = isSameDay(item.date, today);
-  const tooltip = hasRecord
-    ? `${status.label}${item.record.comentario_gdh ? ` - ${item.record.comentario_gdh}` : ""}`
+  const tooltip = hasStatus
+    ? `${status.label}${item.record?.comentario_gdh ? ` - ${item.record.comentario_gdh}` : ""}`
     : "Sin registro";
 
   return (
@@ -516,7 +519,7 @@ function CalendarCell({ item, today, loading, onClick }) {
       title={tooltip}
       onClick={onClick}
       className={`group relative min-h-[58px] rounded-xl border p-1.5 text-left transition sm:min-h-[76px] sm:p-2 ${
-        hasRecord
+        hasStatus
           ? `${status.className} shadow-sm hover:-translate-y-0.5 hover:shadow-lg`
           : "border-slate-200 bg-slate-50 text-slate-400 hover:border-slate-300 hover:bg-white"
       } ${isToday ? "ring-2 ring-[#e30613]/30" : ""}`}
@@ -529,15 +532,15 @@ function CalendarCell({ item, today, loading, onClick }) {
       </span>
 
       <span className="mt-1 flex items-center gap-1 sm:mt-2">
-        <span className="text-base leading-none sm:text-lg">{hasRecord ? status.icon : ""}</span>
-        {hasRecord && (
+        <span className="text-base leading-none sm:text-lg">{hasStatus ? status.icon : ""}</span>
+        {hasStatus && (
           <span className="rounded-md bg-white/55 px-1.5 py-0.5 text-[10px] font-black leading-none backdrop-blur">
             {item.code}
           </span>
         )}
       </span>
 
-      {hasRecord && (
+      {hasStatus && (
         <span className="mt-1 hidden truncate text-[10px] font-bold opacity-80 sm:block">
           {status.label}
         </span>

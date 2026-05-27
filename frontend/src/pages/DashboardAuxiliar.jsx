@@ -40,7 +40,7 @@ export default function DashboardAuxiliar() {
   }, []);
 
   const quickActions = [
-    { icon: Clock, label: "Mi tareo", to: "/calendario" },
+    { icon: Clock, label: "Calendario", to: "/calendario" },
     { icon: MessageCircle, label: "Observaciones", to: "/observaciones" },
   ];
 
