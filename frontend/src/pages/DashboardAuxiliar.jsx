@@ -8,11 +8,11 @@ import {
 } from "lucide-react";
 import api from "../api";
 import { getRolLabel } from "../auth";
+import AnunciosLista from "../components/AnunciosLista";
 
 export default function DashboardAuxiliar() {
   const user = api.getUser();
   const navigate = useNavigate();
-  const [anuncios, setAnuncios] = useState([]);
   const [perfil, setPerfil] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -23,14 +23,10 @@ export default function DashboardAuxiliar() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [profileData, anunciosList] = await Promise.all([
-        api.getMiPerfil().catch(() => null),
-        api.getAnuncios?.().catch(() => []),
-      ]);
+      const profileData = await api.getMiPerfil().catch(() => null);
       setPerfil(profileData);
-      setAnuncios(anunciosList || []);
     } catch (err) {
-      console.error("Error cargando datos:", err);
+      console.error("Error cargando perfil:", err);
     } finally {
       setLoading(false);
     }
@@ -48,8 +44,21 @@ export default function DashboardAuxiliar() {
     { icon: MessageCircle, label: "Observaciones", to: "/observaciones" },
   ];
 
+  const formatearFecha = (fecha) => {
+    if (!fecha) return "—";
+    try {
+      return new Date(fecha).toLocaleDateString("es-ES", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      });
+    } catch {
+      return fecha;
+    }
+  };
+
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 min-h-screen">
+    <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
       
       {/* COLUMNA IZQUIERDA - 2 de 5 (40%) */}
       <div className="lg:col-span-2 space-y-6 p-6 lg:p-0">
@@ -81,18 +90,18 @@ export default function DashboardAuxiliar() {
           </div>
         </div>
 
-        {/* Mi Perfil */}
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm">
+        {/* Mi Perfil - Completo */}
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
           <div className="p-6 border-b border-gray-100">
             <h2 className="text-lg font-bold text-gray-900">Mi Perfil</h2>
           </div>
 
           <div className="p-6">
             {perfil ? (
-              <div className="space-y-6">
+              <div className="space-y-5">
                 {/* Avatar y Nombre */}
                 <div className="text-center">
-                  <div className="w-20 h-20 rounded-full bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center mx-auto mb-4">
+                  <div className="w-20 h-20 rounded-full bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center mx-auto mb-3">
                     <span className="text-3xl font-black text-white">
                       {user?.nombre
                         ?.split(" ")
@@ -102,35 +111,50 @@ export default function DashboardAuxiliar() {
                         .toUpperCase()}
                     </span>
                   </div>
-                  <h3 className="font-bold text-gray-900 text-lg">{perfil.nombre || user?.nombre}</h3>
-                  <p className="text-sm text-gray-500 mt-1">{perfil.cargo || "Auxiliar"}</p>
+                  <h3 className="font-bold text-gray-900 text-lg leading-tight">
+                    {perfil.nombre || user?.nombre}
+                  </h3>
+                  <p className="text-sm text-gray-500 mt-1">
+                    {perfil.cargo || "Auxiliar"}
+                    {perfil.area ? ` · ${perfil.area}` : ""}
+                  </p>
                   {perfil.estado && (
-                    <span className="inline-block mt-3 px-3 py-1 bg-emerald-100 text-emerald-700 rounded-full text-xs font-medium">
+                    <span className="inline-block mt-2 px-3 py-1 bg-emerald-100 text-emerald-700 rounded-full text-xs font-medium">
                       {perfil.estado}
                     </span>
                   )}
                 </div>
 
-                {/* Info Detalles */}
-                <div className="grid grid-cols-2 gap-4 text-sm border-t border-gray-100 pt-6">
-                  {perfil.dni && (
-                    <div>
-                      <p className="text-gray-500 text-xs font-medium mb-1">DNI</p>
-                      <p className="font-semibold text-gray-900">{perfil.dni}</p>
-                    </div>
-                  )}
-                  {perfil.vacaciones_pendientes !== undefined && (
-                    <div>
-                      <p className="text-gray-500 text-xs font-medium mb-1">VACACIONES</p>
-                      <p className="font-semibold text-gray-900">{perfil.vacaciones_pendientes} días</p>
-                    </div>
-                  )}
+                {/* Info Detalles - Grid 2 columnas */}
+                <div className="grid grid-cols-2 gap-x-4 gap-y-4 text-sm border-t border-gray-100 pt-5">
+                  <div>
+                    <p className="text-gray-400 text-xs font-semibold uppercase tracking-wide mb-1">DNI</p>
+                    <p className="font-semibold text-gray-900">{perfil.dni || "—"}</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-400 text-xs font-semibold uppercase tracking-wide mb-1">Cargo</p>
+                    <p className="font-semibold text-gray-900">{perfil.cargo || "—"}</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-400 text-xs font-semibold uppercase tracking-wide mb-1">Fecha de ingreso</p>
+                    <p className="font-semibold text-gray-900">{formatearFecha(perfil.fecha_ingreso)}</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-400 text-xs font-semibold uppercase tracking-wide mb-1">Cumpleaños</p>
+                    <p className="font-semibold text-gray-900">{formatearFecha(perfil.fecha_cumpleanos)}</p>
+                  </div>
+                  <div className="col-span-2">
+                    <p className="text-gray-400 text-xs font-semibold uppercase tracking-wide mb-1">Vacaciones pendientes</p>
+                    <p className="font-semibold text-gray-900">
+                      {perfil.vacaciones_pendientes ?? 0} días
+                    </p>
+                  </div>
                 </div>
 
                 {/* Botón Ver Detalles */}
                 <button
                   onClick={() => navigate("/mi-perfil")}
-                  className="w-full px-4 py-2 rounded-lg border border-gray-200 hover:bg-gray-50 transition font-medium text-gray-700 text-sm flex items-center justify-center gap-2"
+                  className="w-full px-4 py-2.5 rounded-lg border border-gray-200 hover:bg-gray-50 transition font-medium text-gray-700 text-sm flex items-center justify-center gap-2"
                 >
                   Ver detalles
                   <ArrowRight size={14} />
@@ -138,16 +162,18 @@ export default function DashboardAuxiliar() {
               </div>
             ) : (
               <div className="text-center py-8">
-                <p className="text-gray-500">Cargando perfil...</p>
+                <p className="text-gray-500">
+                  {loading ? "Cargando perfil..." : "No se pudo cargar el perfil"}
+                </p>
               </div>
             )}
           </div>
         </div>
       </div>
 
-      {/* COLUMNA DERECHA - 3 de 5 (60%) - Anuncios */}
+      {/* COLUMNA DERECHA - 3 de 5 (60%) - Anuncios completos */}
       <div className="lg:col-span-3 p-6 lg:p-0">
-        <div className="bg-white rounded-2xl border-2 border-red-500 shadow-sm h-full flex flex-col">
+        <div className="bg-white rounded-2xl border-2 border-red-500 shadow-sm flex flex-col h-full">
           <div className="p-6 border-b border-gray-100 flex-shrink-0">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-lg bg-red-50 flex items-center justify-center">
@@ -158,31 +184,7 @@ export default function DashboardAuxiliar() {
           </div>
 
           <div className="flex-1 overflow-y-auto p-6">
-            {anuncios && anuncios.length > 0 ? (
-              <div className="space-y-4">
-                {anuncios.map((anuncio, idx) => (
-                  <div
-                    key={idx}
-                    className="p-4 border-l-4 border-red-500 bg-red-50 rounded-lg hover:bg-red-100 transition cursor-pointer"
-                  >
-                    <p className="font-semibold text-gray-900">{anuncio.titulo || "Sin título"}</p>
-                    <p className="text-sm text-gray-600 mt-2">
-                      {anuncio.contenido || "Sin contenido"}
-                    </p>
-                    <p className="text-xs text-gray-500 mt-3">
-                      {anuncio.fecha_creacion
-                        ? new Date(anuncio.fecha_creacion).toLocaleDateString()
-                        : "Sin fecha"}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="flex flex-col items-center justify-center h-full text-center">
-                <Megaphone size={48} className="text-gray-300 mb-4" />
-                <p className="text-gray-500">Sin anuncios por el momento</p>
-              </div>
-            )}
+            <AnunciosLista />
           </div>
         </div>
       </div>

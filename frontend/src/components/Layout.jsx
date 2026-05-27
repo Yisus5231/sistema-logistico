@@ -28,7 +28,7 @@ const NAV_ITEMS = [
   { to: "/mi-tareo", icon: Clock, label: "Mi Tareo", roles: ["Auxiliar"] },
   { to: "/personal", icon: Users, label: "Mi personal", roles: ["Supervisor"] },
   { to: "/colaboradores", icon: Users, label: "Colaboradores", roles: ["gdh", "Lider", "Coordinador"] },
-  { to: "/anuncios", icon: Megaphone, label: "Anuncios" },
+  { to: "/anuncios", icon: Megaphone, label: "Anuncios", roles: ["gdh", "Supervisor", "Lider", "Coordinador"] },
   { to: "/observaciones", icon: MessageCircle, label: "Mis observaciones", roles: ["Auxiliar"] },
   { to: "/observaciones-supervisor", icon: MessageCircle, label: "Observaciones", roles: ["Supervisor"] },
   { to: "/observaciones-gdh", icon: MessageCircle, label: "Observaciones", roles: ["gdh"] },
