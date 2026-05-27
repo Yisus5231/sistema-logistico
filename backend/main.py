@@ -609,7 +609,17 @@ async def subir_tareo_excel(
         if "Datos" in sheet_names and "Asistencia Total" in sheet_names:
             creados, actualizados, errores = procesar_tareo_transpuesto(tmp_path, db, excel_file)
         else:
-            df = pd.read_excel(tmp_path, sheet_name=0, engine='openpyxl')
+            # Buscar la fila de encabezados dinámicamente
+            df_raw = pd.read_excel(tmp_path, sheet_name=0, engine='openpyxl', header=None)
+            header_row = 0
+            for idx, row in df_raw.iterrows():
+                row_str = ' '.join(str(v) for v in row if pd.notna(v)).lower()
+                # Buscar palabras clave que indiquen encabezados
+                if any(keyword in row_str for keyword in ['empleado', 'dni', 'identificación', 'fecha', 'primera', 'última']):
+                    header_row = idx
+                    break
+            
+            df = pd.read_excel(tmp_path, sheet_name=0, engine='openpyxl', header=header_row)
             df.columns = [str(col).strip() for col in df.columns]
 
             def find_column(df_cols, names):
