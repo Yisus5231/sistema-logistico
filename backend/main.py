@@ -669,14 +669,13 @@ async def subir_tareo_excel(
                     )
                 )
 
-            # OPTIMIZACIÓN EXTREMA: Cachear usuarios y hacer bulk operations
-            usuarios_cache = {u.dni: u.nombre for u in db.query(Usuario).all()}
+            # Cache users once; uploaded DNI values arrive as strings.
+            usuarios_cache = {str(u.dni).strip(): u.nombre for u in db.query(Usuario).all()}
             
             # OPTIMIZACIÓN: Mover imports fuera del loop
             import datetime as dt
             
-            registros_crear = []
-            registros_actualizar_dict = {}
+            registros_por_clave = {}
             
             for idx, row in df.iterrows():
                 try:
@@ -731,12 +730,11 @@ async def subir_tareo_excel(
                     if observacion_col and pd.notna(row[observacion_col]):
                         comentario = str(row[observacion_col]).strip()
 
-                    # OPTIMIZACIÓN: Usar cache en lugar de query
                     nombre = usuarios_cache.get(dni, dni)
-                    
-                    # OPTIMIZACIÓN: Usar clave compuesta para actualización
                     key = (dni, fecha)
-                    registros_actualizar_dict[key] = {
+                    registros_por_clave[key] = {
+                        'dni': dni,
+                        'fecha': fecha,
                         'asistencia': asistencia,
                         'comentario_gdh': comentario,
                         'nombre': nombre
@@ -745,88 +743,42 @@ async def subir_tareo_excel(
                 except Exception as row_error:
                     errores.append(f"Fila {idx + 2}: {str(row_error)}")
             
-            # OPTIMIZACIÓN: Update en bulk usando SQL directo
-            if registros_actualizar_dict:
-                for (dni, fecha), datos in registros_actualizar_dict.items():
-                    db.query(Tareo).filter(
-                        Tareo.dni == dni, 
-                        Tareo.fecha == fecha
-                    ).update({
-                        Tareo.asistencia: datos['asistencia'],
-                        Tareo.comentario_gdh: datos['comentario_gdh'],
-                        Tareo.fecha_actualizacion: datetime.utcnow()
-                    }, synchronize_session=False)
-                    actualizados += 1
-            
-            # OPTIMIZACIÓN: Crear registros que no existan (insert en bulk)
-            registros_existentes = set()
-            for (dni, fecha) in registros_actualizar_dict.keys():
-                registros_existentes.add((dni, fecha))
-            
-            # Construir lista de registros a crear
-            for idx, row in df.iterrows():
-                try:
-                    dni = str(row[dni_col]).strip()
-                    if not dni or dni.lower() == "nan":
-                        continue
+            if registros_por_clave:
+                fechas = {fecha for _, fecha in registros_por_clave.keys()}
+                existentes = db.query(Tareo).filter(Tareo.fecha.in_(fechas)).all()
+                existentes_por_clave = {
+                    (registro.dni, registro.fecha): registro
+                    for registro in existentes
+                    if (registro.dni, registro.fecha) in registros_por_clave
+                }
 
-                    try:
-                        fecha_valor = row[fecha_col]
-                        fecha = pd.to_datetime(fecha_valor).date() if isinstance(fecha_valor, str) else pd.Timestamp(fecha_valor).date()
-                    except:
-                        continue
+                ahora = datetime.utcnow()
+                registros_actualizar = []
+                registros_crear = []
+                for key, datos in registros_por_clave.items():
+                    existente = existentes_por_clave.get(key)
+                    if existente:
+                        registros_actualizar.append({
+                            "id": existente.id,
+                            "asistencia": datos["asistencia"],
+                            "comentario_gdh": datos["comentario_gdh"],
+                            "fecha_actualizacion": ahora,
+                        })
+                    else:
+                        registros_crear.append({
+                            **datos,
+                            "origen": "excel_upload",
+                            "fecha_creacion": ahora,
+                            "fecha_actualizacion": ahora,
+                        })
 
-                    key = (dni, fecha)
-                    if key not in registros_existentes:
-                        if calcular_asistencia_auto and primera_col:
-                            hora_entrada = None
-                            hora_salida = None
-                            
-                            try:
-                                if pd.notna(row[primera_col]):
-                                    val_entrada = row[primera_col]
-                                    if isinstance(val_entrada, str):
-                                        hora_entrada = val_entrada.strip()
-                                    elif isinstance(val_entrada, dt.time):
-                                        hora_entrada = val_entrada.strftime("%H:%M:%S")
-                                    else:
-                                        hora_entrada = str(val_entrada).strip()
-                            except:
-                                hora_entrada = None
-                            
-                            try:
-                                if ultima_col and pd.notna(row[ultima_col]):
-                                    val_salida = row[ultima_col]
-                                    if isinstance(val_salida, str):
-                                        hora_salida = val_salida.strip()
-                                    elif isinstance(val_salida, dt.time):
-                                        hora_salida = val_salida.strftime("%H:%M:%S")
-                                    else:
-                                        hora_salida = str(val_salida).strip()
-                            except:
-                                hora_salida = None
-                            
-                            asistencia = determinar_turno(hora_entrada, hora_salida)
-                        else:
-                            asistencia = str(row[asistencia_col]).strip().upper() if asistencia_col and pd.notna(row[asistencia_col]) else "F"
-                        
-                        nombre = usuarios_cache.get(dni, dni)
-                        comentario = ""
-                        if observacion_col and pd.notna(row[observacion_col]):
-                            comentario = str(row[observacion_col]).strip()
-                        
-                        registros_crear.append(Tareo(
-                            dni=dni, nombre=nombre, fecha=fecha,
-                            asistencia=asistencia, comentario_gdh=comentario,
-                            origen="excel_upload"
-                        ))
-                        creados += 1
-                except:
-                    pass
-            
-            # OPTIMIZACIÓN: Agregar todos los registros de una vez
-            if registros_crear:
-                db.add_all(registros_crear)
+                if registros_actualizar:
+                    db.bulk_update_mappings(Tareo, registros_actualizar)
+                if registros_crear:
+                    db.bulk_insert_mappings(Tareo, registros_crear)
+
+                actualizados = len(registros_actualizar)
+                creados = len(registros_crear)
 
         db.commit()
         return {

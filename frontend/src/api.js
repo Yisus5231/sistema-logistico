@@ -128,11 +128,14 @@ function withParams(path, params = {}) {
   return query ? `${path}?${query}` : path;
 }
 
-function uploadFile(path, file, fieldName = "archivo") {
+function uploadFile(path, file, fieldName = "archivo", options = {}) {
   const formData = new FormData();
   formData.append(fieldName, file);
   return http
-    .post(path, formData, { headers: { "Content-Type": "multipart/form-data" } })
+    .post(path, formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+      ...options,
+    })
     .then((response) => response.data);
 }
 
@@ -156,7 +159,7 @@ const api = {
   updateColaborador: (dni, datos) => http.put(`/colaborador/${dni}`, datos).then((response) => response.data),
 
   subirExcel: (file) => uploadFile("/sincronizar-excel", file),
-  subirTareoExcel: (file) => uploadFile("/tareo/subir-excel", file),
+  subirTareoExcel: (file) => uploadFile("/tareo/subir-excel", file, "archivo", { timeout: 120000 }),
 
   getHistorial: (dni, tipo_cambio, limite = 100) =>
     http.get(withParams("/historial", { dni, tipo_cambio, limite })).then((response) => response.data),
