@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate } from "react-router-dom";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
+import DashboardAuxiliar from "./pages/DashboardAuxiliar";
 import Admin from "./pages/Admin";
 import Colaboradores from "./pages/Colaboradores";
 import ColaboradorDetalle from "./pages/ColaboradorDetalle";
@@ -25,7 +26,16 @@ export default function App() {
       <Route path="/login" element={<Login />} />
 
       <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
-        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/dashboard" element={
+          <ProtectedRoute roles={["gdh", "Supervisor", "Lider", "Coordinador"]}>
+            <Dashboard />
+          </ProtectedRoute>
+        } />
+        <Route path="/dashboard-auxiliar" element={
+          <ProtectedRoute roles={["Auxiliar"]}>
+            <DashboardAuxiliar />
+          </ProtectedRoute>
+        } />
         <Route path="/admin" element={
           <ProtectedRoute roles={["gdh"]}>
             <Admin />

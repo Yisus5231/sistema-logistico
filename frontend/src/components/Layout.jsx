@@ -24,7 +24,7 @@ import { getRolLabel } from "../auth";
 import AdeccoLogo from "./AdeccoLogo";
 
 const NAV_ITEMS = [
-  { to: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
+  { to: "/dashboard", icon: LayoutDashboard, label: "Dashboard", getRolTo: (role) => role === "auxiliar" ? "/dashboard-auxiliar" : "/dashboard" },
   { to: "/mi-tareo", icon: Clock, label: "Mi Tareo", roles: ["Auxiliar"] },
   { to: "/personal", icon: Users, label: "Mi personal", roles: ["Supervisor"] },
   { to: "/colaboradores", icon: Users, label: "Colaboradores", roles: ["gdh", "Lider", "Coordinador"] },
@@ -157,10 +157,12 @@ export default function Layout() {
         </div>
 
         <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
-          {filteredItems.map((item) => (
+          {filteredItems.map((item) => {
+            const linkTo = item.getRolTo ? item.getRolTo(user?.rol?.toLowerCase()) : item.to;
+            return (
             <NavLink
               key={item.to}
-              to={item.to}
+              to={linkTo}
               title={collapsed ? item.label : undefined}
               className={({ isActive }) =>
                 `group flex h-11 items-center rounded-xl text-sm font-semibold transition ${
@@ -179,7 +181,8 @@ export default function Layout() {
                 </>
               )}
             </NavLink>
-          ))}
+            );
+          })}
         </nav>
 
         <div className="border-t border-white/15 p-3">
