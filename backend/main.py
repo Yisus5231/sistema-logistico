@@ -612,13 +612,23 @@ async def subir_tareo_excel(
             # Buscar la fila de encabezados dinámicamente
             df_raw = pd.read_excel(tmp_path, sheet_name=0, engine='openpyxl', header=None)
             header_row = 0
-            for idx, row in df_raw.iterrows():
-                row_str = ' '.join(str(v) for v in row if pd.notna(v)).lower()
-                # Buscar palabras clave que indiquen encabezados
-                if any(keyword in row_str for keyword in ['empleado', 'dni', 'identificación', 'fecha', 'primera', 'última']):
-                    header_row = idx
-                    break
             
+            # Buscar la fila que contenga la mayoría de palabras clave
+            keywords = ['empleado', 'identificación', 'primera', 'última', 'fecha', 'dni']
+            best_row = 0
+            best_count = 0
+            
+            for idx, row in df_raw.iterrows():
+                if idx > 20:  # No buscar más allá de fila 20
+                    break
+                row_str = ' '.join(str(v) for v in row if pd.notna(v)).lower()
+                keyword_count = sum(1 for kw in keywords if kw in row_str)
+                
+                if keyword_count > best_count:
+                    best_count = keyword_count
+                    best_row = idx
+            
+            header_row = best_row
             df = pd.read_excel(tmp_path, sheet_name=0, engine='openpyxl', header=header_row)
             df.columns = [str(col).strip() for col in df.columns]
 
