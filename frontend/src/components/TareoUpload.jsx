@@ -198,15 +198,33 @@ export default function TareoUpload() {
           Tu archivo Excel debe tener las siguientes columnas:
         </p>
         <ul className="text-sm text-gray-600 space-y-2 ml-4">
-          <li>• <strong>DNI</strong> - Documento de identidad (ej: 12345678)</li>
-          <li>• <strong>Nombre</strong> - Nombre completo del colaborador</li>
-          <li>• <strong>Fecha</strong> - Fecha (formato DD/MM/YYYY)</li>
-          <li>• <strong>Asistencia</strong> - Código de asistencia:</li>
-          <ul className="ml-4 text-xs text-gray-500 mt-1 space-y-1">
-            <li>M = Mañana | T = Tarde | N = Noche</li>
-            <li>F = Falta | V = Vacaciones | L = Licencia</li>
-          </ul>
+          <li>• <strong>Empleado</strong> - Nombre completo del colaborador (o similar)</li>
+          <li>• <strong>Identificación</strong> - DNI/Documento de identidad (ej: 12345678)</li>
+          <li>• <strong>Fecha</strong> - Fecha del registro (formato DD/MM/YYYY)</li>
+          <li>• <strong>Primera</strong> - Hora de entrada (formato HH:MM:SS, ej: 06:30:00)</li>
+          <li>• <strong>Última</strong> - Hora de salida (formato HH:MM:SS, opcional)</li>
         </ul>
+
+        <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+          <p className="text-sm font-semibold text-blue-800 mb-2">✨ Asistencia Automática:</p>
+          <p className="text-xs text-blue-700 mb-2">
+            El sistema calcula automáticamente el código de asistencia basado en los horarios:
+          </p>
+          <ul className="text-xs text-blue-700 ml-4 space-y-1">
+            <li>• <strong>M</strong> (Mañana): Entrada 05:00-13:00</li>
+            <li>• <strong>T</strong> (Tarde): Entrada 12:00-15:00 (y salida &lt; 16:00)</li>
+            <li>• <strong>N</strong> (Noche): Entrada 18:00-23:00</li>
+            <li>• <strong>F</strong> (Falta): Sin marcación o fuera de rango</li>
+            <li>• <strong>⚠️ Especial:</strong> Entrada 12:00-15:00 + Salida ≥ 16:00 → M (Mañana extendida)</li>
+          </ul>
+        </div>
+
+        <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+          <p className="text-sm font-semibold text-green-800 mb-2">📊 Resultado:</p>
+          <p className="text-xs text-green-700">
+            Después de procesar, verás el total de registros creados/actualizados y las estadísticas de asistencia en Panel RH.
+          </p>
+        </div>
       </div>
     </div>
   );
