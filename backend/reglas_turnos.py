@@ -14,8 +14,6 @@ TARDE_DESDE = time(13, 0)
 TARDE_HASTA = time(14, 59, 59)
 NOCHE_INGRESO_DESDE = time(18, 30)
 FIN_DIA = time(23, 59, 59)
-NOCHE_SALIDA_DESDE = time(6, 0)
-NOCHE_SALIDA_HASTA = time(6, 29, 59)
 
 
 def _parse_hora(value):
@@ -41,6 +39,7 @@ def determinar_turno(primera_marcacion: str, ultima_marcacion: str = None) -> st
     La tarde se evalua primero porque una salida tarde a las 22:00 o 23:00
     tambien cae en el rango horario de ingreso nocturno. Luego la noche tiene
     prioridad sobre manana para corregir filas como ``06:10 -> 20:55``.
+    Una salida aislada de madrugada no acredita un turno trabajado del dia.
     """
 
     primera = _parse_hora(primera_marcacion)
@@ -53,8 +52,7 @@ def determinar_turno(primera_marcacion: str, ultima_marcacion: str = None) -> st
         _entre(primera, NOCHE_INGRESO_DESDE, FIN_DIA)
         or _entre(ultima, NOCHE_INGRESO_DESDE, FIN_DIA)
     )
-    salida_noche = _entre(primera, NOCHE_SALIDA_DESDE, NOCHE_SALIDA_HASTA)
-    if ingreso_noche or salida_noche:
+    if ingreso_noche:
         return "N"
 
     if _entre(primera, MANANA_DESDE, MANANA_HASTA):

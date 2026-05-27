@@ -213,9 +213,10 @@ export default function TareoUpload() {
           <ul className="text-xs text-blue-700 ml-4 space-y-1">
             <li>• <strong>M</strong> (Mañana): Primera marcación entre 06:30 y 09:00</li>
             <li>• <strong>T</strong> (Tarde): Primera marcación entre 13:00 y 14:59</li>
-            <li>• <strong>N</strong> (Noche): Ingreso desde 18:30 o salida registrada entre 06:00 y 06:29</li>
+            <li>• <strong>N</strong> (Noche): Ingreso registrado desde 18:30</li>
             <li>• <strong>F</strong> (Falta): Sin marcación o fuera de rango</li>
             <li>• <strong>Especial:</strong> Si la última marcación es desde 18:30, prevalece turno noche aunque la primera sea por la mañana</li>
+            <li>• <strong>Salida nocturna:</strong> Una primera marcación entre 06:00 y 06:29 no acredita por sí sola un turno del día</li>
           </ul>
         </div>
 

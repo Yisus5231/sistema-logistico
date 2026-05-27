@@ -8,8 +8,8 @@ class ReglasTurnosMarcacionesTest(unittest.TestCase):
         self.assertEqual(determinar_turno("06:10:00", "20:55:00"), "N")
         self.assertEqual(determinar_turno("06:45:00", "20:55:00"), "N")
 
-    def test_turno_noche_con_sola_salida_temprana(self):
-        self.assertEqual(determinar_turno("06:15:00", None), "N")
+    def test_salida_temprana_sola_no_acredita_turno_noche(self):
+        self.assertEqual(determinar_turno("06:15:00", None), "F")
 
     def test_turno_noche_con_ingreso_en_primera(self):
         self.assertEqual(determinar_turno("21:00:00", "2"), "N")

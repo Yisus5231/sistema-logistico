@@ -72,7 +72,7 @@ const STATUS = {
     group: "permisos",
   },
   FE: {
-    label: "Feriado",
+    label: "Feriado No Trabajado",
     icon: "🎉",
     className: "bg-amber-100 text-amber-950 border-amber-300 ring-amber-200",
     dot: "bg-amber-400",
@@ -147,6 +147,8 @@ const DEFAULT_STATUS = {
 function normalizeCode(value) {
   return String(value || "").trim().toUpperCase();
 }
+
+const WORKED_SHIFT_CODES = new Set(["M", "T", "N"]);
 
 function pad(value) {
   return String(value).padStart(2, "0");
@@ -324,8 +326,10 @@ export default function CalendarioAuxiliar() {
       const holidayName = peruHolidayName(date);
       const isWeeklyRest = date.getDay() === 0;
       const missingAttendance = !record && key < todayKey && !holidayName && !isWeeklyRest;
-      const inferredCode = holidayName ? "FE" : isWeeklyRest ? "D" : missingAttendance ? "F" : "";
-      const code = record ? normalizeCode(record.asistencia) : inferredCode;
+      const recordedCode = record ? normalizeCode(record.asistencia) : "";
+      const holidayCode = holidayName ? (WORKED_SHIFT_CODES.has(recordedCode) ? "FT" : "FE") : "";
+      const inferredCode = isWeeklyRest ? "D" : missingAttendance ? "F" : "";
+      const code = holidayCode || recordedCode || inferredCode;
       const status = STATUS[code] || (record ? { ...DEFAULT_STATUS, label: code || "Registro" } : DEFAULT_STATUS);
       cells.push({
         key, day, date, record, code, status, holidayName, isWeeklyRest, missingAttendance, empty: false,
