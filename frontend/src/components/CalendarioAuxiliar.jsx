@@ -85,18 +85,18 @@ const STATUS = {
     dot: "bg-red-900",
     group: "feriados",
   },
-  DN: {
-    label: "Descanso Noche",
-    icon: "😴",
-    className: "bg-slate-200 text-slate-800 border-slate-300 ring-slate-200",
-    dot: "bg-slate-500",
-    group: "descansos",
-  },
   D: {
     label: "Descanso semanal",
     icon: "😴",
     className: "bg-slate-100 text-slate-700 border-slate-300 ring-slate-200",
     dot: "bg-slate-400",
+    group: "descansos",
+  },
+  DT: {
+    label: "Descanso semanal trabajado",
+    icon: "🛠️",
+    className: "bg-indigo-900 text-white border-indigo-950 ring-indigo-200",
+    dot: "bg-indigo-900",
     group: "descansos",
   },
   BAP: {
@@ -327,9 +327,10 @@ export default function CalendarioAuxiliar() {
       const isWeeklyRest = date.getDay() === 0;
       const missingAttendance = !record && key < todayKey && !holidayName && !isWeeklyRest;
       const recordedCode = record ? normalizeCode(record.asistencia) : "";
+      const weeklyRestCode = isWeeklyRest ? (WORKED_SHIFT_CODES.has(recordedCode) ? "DT" : "D") : "";
       const holidayCode = holidayName ? (WORKED_SHIFT_CODES.has(recordedCode) ? "FT" : "FE") : "";
-      const inferredCode = isWeeklyRest ? "D" : missingAttendance ? "F" : "";
-      const code = holidayCode || recordedCode || inferredCode;
+      const inferredCode = missingAttendance ? "F" : "";
+      const code = weeklyRestCode || holidayCode || recordedCode || inferredCode;
       const status = STATUS[code] || (record ? { ...DEFAULT_STATUS, label: code || "Registro" } : DEFAULT_STATUS);
       cells.push({
         key, day, date, record, code, status, holidayName, isWeeklyRest, missingAttendance, empty: false,
@@ -359,7 +360,7 @@ export default function CalendarioAuxiliar() {
       const code = day.code;
       const status = STATUS[code];
       if (!status) return;
-      if (["M", "N", "T", "FT"].includes(code)) base.trabajados += 1;
+      if (["M", "N", "T", "FT", "DT"].includes(code)) base.trabajados += 1;
       if (code === "M") base.dia += 1;
       if (code === "N") base.noche += 1;
       if (code === "T") base.tarde += 1;
