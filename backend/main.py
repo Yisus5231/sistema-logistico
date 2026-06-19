@@ -15,6 +15,7 @@ import os
 import tempfile
 import base64
 import binascii
+import unicodedata
 from uuid import uuid4
 
 from database import SessionLocal, engine, get_db
@@ -643,6 +644,15 @@ def combinar_comentario_marcacion(comentario: str, incompleta: bool) -> str:
     return " | ".join(partes)
 
 
+def normalizar_nombre_columna(valor) -> str:
+    texto = str(valor or "").strip().lower()
+    texto = "".join(
+        char for char in unicodedata.normalize("NFKD", texto)
+        if not unicodedata.combining(char)
+    )
+    return " ".join(texto.split())
+
+
 @app.post("/tareo/subir-excel")
 async def subir_tareo_excel(
     archivo: UploadFile = File(...),
@@ -705,17 +715,18 @@ async def subir_tareo_excel(
             df.columns = [str(col).strip() for col in df.columns]
 
             def find_column(df_cols, names):
-                col_lower = {col.lower(): col for col in df_cols}
+                col_lower = {normalizar_nombre_columna(col): col for col in df_cols}
                 for name in names:
-                    if name.lower() in col_lower:
-                        return col_lower[name.lower()]
+                    normalized = normalizar_nombre_columna(name)
+                    if normalized in col_lower:
+                        return col_lower[normalized]
                 return None
 
-            dni_col = find_column(df.columns, ["DNI", "Cedula", "Documento", "Identificación"])
+            dni_col = find_column(df.columns, ["DNI", "Cedula", "Documento", "Identificacion"])
             fecha_col = find_column(df.columns, ["Fecha", "Date"])
             asistencia_col = find_column(df.columns, ["Asistencia", "Tipo", "Status", "Turno"])
-            primera_col = find_column(df.columns, ["Primera", "Hora Entrada", "Entrada"])
-            ultima_col = find_column(df.columns, ["Ultima", "Última", "Hora Salida", "Salida"])
+            primera_col = find_column(df.columns, ["Primera", "Primera Marcacion", "Hora Entrada", "Entrada"])
+            ultima_col = find_column(df.columns, ["Ultima", "Ultima Marcacion", "Hora Salida", "Salida"])
             observacion_col = find_column(df.columns, ["Observaciones", "Comentario", "Notas"])
 
             # Validar que tengamos datos mínimos
