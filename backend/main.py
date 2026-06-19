@@ -1,5 +1,5 @@
-"""
-Sistema de Gestión de Colaboradores + Anuncios + Tareo
+﻿"""
+Sistema de GestiÃ³n de Colaboradores + Anuncios + Tareo
 Backend - FastAPI v3.1
 """
 
@@ -15,6 +15,7 @@ import os
 import tempfile
 import base64
 import binascii
+import unicodedata
 from uuid import uuid4
 
 from database import SessionLocal, engine, get_db
@@ -64,16 +65,16 @@ def _auto_seed():
         crear_usuarios()
     db.close()
 _auto_seed()
-# ═══════════════════════════════════════════
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 # APP
-# ═══════════════════════════════════════════
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 app = FastAPI(
-    title="Sistema de Gestión de Colaboradores",
-    description="Gestión integral de colaboradores - Tareo, Anuncios, Observaciones",
+    title="Sistema de GestiÃ³n de Colaboradores",
+    description="GestiÃ³n integral de colaboradores - Tareo, Anuncios, Observaciones",
     version="3.1"
 )
 
-# CORS - configurar según entorno
+# CORS - configurar segÃºn entorno
 ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000").split(",")
 
 app.add_middleware(
@@ -84,7 +85,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Servir archivos estáticos (uploads)
+# Servir archivos estÃ¡ticos (uploads)
 @app.middleware("http")
 async def add_security_headers(request: Request, call_next):
     response = await call_next(request)
@@ -101,9 +102,9 @@ app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 app.include_router(observaciones_router)
 
 
-# ═══════════════════════════════════════════
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 # MODELOS PYDANTIC
-# ═══════════════════════════════════════════
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 class LoginRequest(BaseModel):
     usuario: str
@@ -125,7 +126,7 @@ class CambiarPasswordRequest(BaseModel):
     @classmethod
     def password_strength(cls, v):
         if len(v) < 6:
-            raise ValueError("La contraseña debe tener al menos 6 caracteres")
+            raise ValueError("La contraseÃ±a debe tener al menos 6 caracteres")
         return v
 
 
@@ -195,7 +196,7 @@ class ActualizarTareoRequest(BaseModel):
 
 
 class ComentarioTareoRequest(BaseModel):
-    """Payload para que un Auxiliar envíe un comentario sobre su asistencia."""
+    """Payload para que un Auxiliar envÃ­e un comentario sobre su asistencia."""
     fecha: str
     comentario: str
 
@@ -203,7 +204,7 @@ class ComentarioTareoRequest(BaseModel):
     @classmethod
     def not_empty(cls, v):
         if not v or not v.strip():
-            raise ValueError("El comentario no puede estar vacío")
+            raise ValueError("El comentario no puede estar vacÃ­o")
         return v.strip()
 
     @field_validator("fecha")
@@ -252,16 +253,16 @@ def guardar_media_base64(raw_base64: str, kind: str) -> str:
     return f"/uploads/{filename}"
 
 
-# ═══════════════════════════════════════════
-# ENDPOINTS - AUTENTICACIÓN
-# ═══════════════════════════════════════════
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+# ENDPOINTS - AUTENTICACIÃ“N
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 @app.post("/login")
 def login(data: LoginRequest, db: Session = Depends(get_db)):
-    """Login con usuario y contraseña.
+    """Login con usuario y contraseÃ±a.
 
     Aplica rate limiting por nombre de usuario para limitar ataques de fuerza bruta.
-    Devuelve un access token (corta duración) y un refresh token (larga duración).
+    Devuelve un access token (corta duraciÃ³n) y un refresh token (larga duraciÃ³n).
     """
     # Verificar rate limit antes de consultar la BD
     verificar_rate_limit(data.usuario)
@@ -299,12 +300,12 @@ def login(data: LoginRequest, db: Session = Depends(get_db)):
 
 @app.post("/token/refresh")
 def refrescar_token(refresh_token: str, db: Session = Depends(get_db)):
-    """Obtiene un nuevo access token usando un refresh token válido."""
+    """Obtiene un nuevo access token usando un refresh token vÃ¡lido."""
     from models import Usuario as UsuarioModel
 
     payload = verificar_token(refresh_token)
     if not payload or payload.get("type") != "refresh":
-        raise HTTPException(status_code=401, detail="Refresh token inválido o expirado")
+        raise HTTPException(status_code=401, detail="Refresh token invÃ¡lido o expirado")
 
     dni = payload.get("dni")
     if not dni:
@@ -321,9 +322,9 @@ def refrescar_token(refresh_token: str, db: Session = Depends(get_db)):
     return {"token": new_token}
 
 
-# ═══════════════════════════════════════════
-# ENDPOINTS - SINCRONIZACIÓN EXCEL
-# ═══════════════════════════════════════════
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+# ENDPOINTS - SINCRONIZACIÃ“N EXCEL
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 @app.post("/sincronizar-excel")
 async def sincronizar_excel(
@@ -366,13 +367,13 @@ async def sincronizar_excel(
                 pass
 
 
-# ═══════════════════════════════════════════
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 # ENDPOINTS - ANUNCIOS
-# ═══════════════════════════════════════════
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 @app.get("/anuncios")
 def obtener_anuncios(db: Session = Depends(get_db), usuario: Usuario = Depends(obtener_usuario_actual)):
-    """Obtiene anuncios filtrados por rol y área"""
+    """Obtiene anuncios filtrados por rol y Ã¡rea"""
     query = db.query(Anuncio)
 
     if not es_rol(usuario.rol, "gdh"):
@@ -413,7 +414,7 @@ async def crear_anuncio(
     db: Session = Depends(get_db),
     usuario: Usuario = Depends(obtener_usuario_actual)
 ):
-    """Crea un nuevo anuncio (GDH para todos, Supervisor para su área)"""
+    """Crea un nuevo anuncio (GDH para todos, Supervisor para su Ã¡rea)"""
     if not es_rol_en(usuario.rol, ["gdh", "Supervisor"]):
         raise HTTPException(status_code=403, detail="Solo GDH y Supervisores pueden crear anuncios")
 
@@ -459,7 +460,7 @@ async def crear_anuncio(
             usuario_id=otro.id,
             tipo="nuevo_anuncio",
             anuncio_id=anuncio.id,
-            contenido=f"{usuario.nombre} publicó un nuevo anuncio"
+            contenido=f"{usuario.nombre} publicÃ³ un nuevo anuncio"
         ))
     db.commit()
 
@@ -485,9 +486,9 @@ def eliminar_anuncio(
     return {"msg": "Anuncio eliminado"}
 
 
-# ═══════════════════════════════════════════
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 # ENDPOINTS - REACCIONES
-# ═══════════════════════════════════════════
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 @app.post("/anuncios/{anuncio_id}/reaccionar")
 def reaccionar_anuncio(
@@ -495,7 +496,7 @@ def reaccionar_anuncio(
     db: Session = Depends(get_db),
     usuario: Usuario = Depends(obtener_usuario_actual)
 ):
-    """Toggle reacción a un anuncio"""
+    """Toggle reacciÃ³n a un anuncio"""
     anuncio = db.query(Anuncio).filter(Anuncio.id == anuncio_id).first()
     if not anuncio:
         raise HTTPException(status_code=404, detail="Anuncio no encontrado")
@@ -508,7 +509,7 @@ def reaccionar_anuncio(
     if existente:
         db.delete(existente)
         db.commit()
-        return {"msg": "Reacción removida", "activa": False}
+        return {"msg": "ReacciÃ³n removida", "activa": False}
 
     db.add(Reaccion(
         anuncio_id=anuncio_id,
@@ -517,22 +518,22 @@ def reaccionar_anuncio(
         tipo="corazon"
     ))
     db.commit()
-    return {"msg": "Reacción agregada", "activa": True}
+    return {"msg": "ReacciÃ³n agregada", "activa": True}
 
 
-# ═══════════════════════════════════════════
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 # ENDPOINTS - NOTIFICACIONES
-# ═══════════════════════════════════════════
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 @app.get("/notificaciones")
 def obtener_notificaciones(
     db: Session = Depends(get_db),
     usuario: Usuario = Depends(obtener_usuario_actual),
     leidas: Optional[bool] = None,
-    skip: int = Query(default=0, ge=0, description="Registros a omitir (paginación)"),
-    limit: int = Query(default=50, ge=1, le=200, description="Máximo de notificaciones a devolver"),
+    skip: int = Query(default=0, ge=0, description="Registros a omitir (paginaciÃ³n)"),
+    limit: int = Query(default=50, ge=1, le=200, description="MÃ¡ximo de notificaciones a devolver"),
 ):
-    """Obtiene las notificaciones del usuario con paginación opcional (skip/limit)."""
+    """Obtiene las notificaciones del usuario con paginaciÃ³n opcional (skip/limit)."""
     query = db.query(Notificacion).filter(Notificacion.usuario_id == usuario.id)
     if leidas is not None:
         query = query.filter(Notificacion.leida == leidas)
@@ -572,17 +573,17 @@ def marcar_notificacion_leida(
     db: Session = Depends(get_db),
     usuario: Usuario = Depends(obtener_usuario_actual)
 ):
-    """Marca una notificación como leída"""
+    """Marca una notificaciÃ³n como leÃ­da"""
     notif = db.query(Notificacion).filter(
         Notificacion.id == notificacion_id,
         Notificacion.usuario_id == usuario.id
     ).first()
     if not notif:
-        raise HTTPException(status_code=404, detail="Notificación no encontrada")
+        raise HTTPException(status_code=404, detail="NotificaciÃ³n no encontrada")
 
     notif.leida = True
     db.commit()
-    return {"msg": "Notificación marcada como leída"}
+    return {"msg": "NotificaciÃ³n marcada como leÃ­da"}
 
 
 @app.put("/notificaciones/leer-todas")
@@ -590,18 +591,18 @@ def marcar_todas_leidas(
     db: Session = Depends(get_db),
     usuario: Usuario = Depends(obtener_usuario_actual)
 ):
-    """Marca todas las notificaciones como leídas"""
+    """Marca todas las notificaciones como leÃ­das"""
     db.query(Notificacion).filter(
         Notificacion.usuario_id == usuario.id,
         Notificacion.leida == False
     ).update({"leida": True})
     db.commit()
-    return {"msg": "Todas las notificaciones marcadas como leídas"}
+    return {"msg": "Todas las notificaciones marcadas como leÃ­das"}
 
 
-# ═══════════════════════════════════════════
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 # ENDPOINTS - TAREO (ASISTENCIA)
-# ═══════════════════════════════════════════
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 def normalizar_dni(valor) -> Optional[str]:
     if valor is None:
@@ -643,6 +644,15 @@ def combinar_comentario_marcacion(comentario: str, incompleta: bool) -> str:
     return " | ".join(partes)
 
 
+def normalizar_nombre_columna(valor) -> str:
+    texto = str(valor or "").strip().lower()
+    texto = "".join(
+        char for char in unicodedata.normalize("NFKD", texto)
+        if not unicodedata.combining(char)
+    )
+    return " ".join(texto.split())
+
+
 @app.post("/tareo/subir-excel")
 async def subir_tareo_excel(
     archivo: UploadFile = File(...),
@@ -681,17 +691,17 @@ async def subir_tareo_excel(
         if "Datos" in sheet_names and "Asistencia Total" in sheet_names:
             creados, actualizados, errores = procesar_tareo_transpuesto(tmp_path, db, excel_file)
         else:
-            # Buscar la fila de encabezados dinámicamente
+            # Buscar la fila de encabezados dinÃ¡micamente
             df_raw = pd.read_excel(tmp_path, sheet_name=0, engine='openpyxl', header=None)
             header_row = 0
             
-            # Buscar la fila que contenga la mayoría de palabras clave
-            keywords = ['empleado', 'identificación', 'primera', 'última', 'fecha', 'dni']
+            # Buscar la fila que contenga la mayorÃ­a de palabras clave
+            keywords = ['empleado', 'identificaciÃ³n', 'primera', 'Ãºltima', 'fecha', 'dni']
             best_row = 0
             best_count = 0
             
             for idx, row in df_raw.iterrows():
-                if idx > 20:  # No buscar más allá de fila 20
+                if idx > 20:  # No buscar mÃ¡s allÃ¡ de fila 20
                     break
                 row_str = ' '.join(str(v) for v in row if pd.notna(v)).lower()
                 keyword_count = sum(1 for kw in keywords if kw in row_str)
@@ -705,20 +715,21 @@ async def subir_tareo_excel(
             df.columns = [str(col).strip() for col in df.columns]
 
             def find_column(df_cols, names):
-                col_lower = {col.lower(): col for col in df_cols}
+                col_lower = {normalizar_nombre_columna(col): col for col in df_cols}
                 for name in names:
-                    if name.lower() in col_lower:
-                        return col_lower[name.lower()]
+                    normalized = normalizar_nombre_columna(name)
+                    if normalized in col_lower:
+                        return col_lower[normalized]
                 return None
 
-            dni_col = find_column(df.columns, ["DNI", "Cedula", "Documento", "Identificación"])
+            dni_col = find_column(df.columns, ["DNI", "Cedula", "Documento", "Identificacion"])
             fecha_col = find_column(df.columns, ["Fecha", "Date"])
             asistencia_col = find_column(df.columns, ["Asistencia", "Tipo", "Status", "Turno"])
-            primera_col = find_column(df.columns, ["Primera", "Hora Entrada", "Entrada"])
-            ultima_col = find_column(df.columns, ["Ultima", "Última", "Hora Salida", "Salida"])
+            primera_col = find_column(df.columns, ["Primera", "Primera Marcacion", "Hora Entrada", "Entrada"])
+            ultima_col = find_column(df.columns, ["Ultima", "Ultima Marcacion", "Hora Salida", "Salida"])
             observacion_col = find_column(df.columns, ["Observaciones", "Comentario", "Notas"])
 
-            # Validar que tengamos datos mínimos
+            # Validar que tengamos datos mÃ­nimos
             if not dni_col or not fecha_col:
                 raise HTTPException(
                     status_code=422,
@@ -728,15 +739,15 @@ async def subir_tareo_excel(
                     )
                 )
 
-            # Determinar si vamos a calcular la asistencia automáticamente
+            # Determinar si vamos a calcular la asistencia automÃ¡ticamente
             calcular_asistencia_auto = primera_col and not asistencia_col
             
             if not asistencia_col and not calcular_asistencia_auto:
                 raise HTTPException(
                     status_code=422,
                     detail=(
-                        "No se encontró columna de Asistencia ni columnas de horario (Primera/Última). "
-                        "Proporciona una columna 'Asistencia' o 'Primera' (y opcionalmente 'Última'). "
+                        "No se encontrÃ³ columna de Asistencia ni columnas de horario (Primera/Ãšltima). "
+                        "Proporciona una columna 'Asistencia' o 'Primera' (y opcionalmente 'Ãšltima'). "
                         f"Columnas encontradas: {list(df.columns)}"
                     )
                 )
@@ -744,7 +755,7 @@ async def subir_tareo_excel(
             # Cache users once; uploaded DNI values arrive as strings.
             usuarios_cache = {str(u.dni).strip(): u.nombre for u in db.query(Usuario).all()}
             
-            # OPTIMIZACIÓN: Mover imports fuera del loop
+            # OPTIMIZACIÃ“N: Mover imports fuera del loop
             
             registros_por_clave = {}
             
@@ -758,7 +769,7 @@ async def subir_tareo_excel(
                         fecha_valor = row[fecha_col]
                         fecha = pd.to_datetime(fecha_valor).date() if isinstance(fecha_valor, str) else pd.Timestamp(fecha_valor).date()
                     except Exception:
-                        errores.append(f"Fila {idx + 2}: Fecha inválida")
+                        errores.append(f"Fila {idx + 2}: Fecha invÃ¡lida")
                         continue
 
                     if rango_inicio and fecha < rango_inicio:
@@ -772,9 +783,9 @@ async def subir_tareo_excel(
                     hora_salida = parsear_hora_marcacion(row[ultima_col]) if ultima_col and pd.notna(row[ultima_col]) else None
                     asistencia_incompleta = bool(hora_entrada and not hora_salida)
 
-                    # Calcular asistencia automáticamente si no existe columna
+                    # Calcular asistencia automÃ¡ticamente si no existe columna
                     if calcular_asistencia_auto and primera_col:
-                        # Aplicar reglas automáticas de turnos
+                        # Aplicar reglas automÃ¡ticas de turnos
                         asistencia = "A" if asistencia_incompleta else determinar_turno(hora_entrada, hora_salida)
                     else:
                         # Usar columna de asistencia si existe
@@ -960,12 +971,12 @@ def obtener_tareo(
     q: Optional[str] = None,
     fecha_inicio: Optional[str] = None,
     fecha_fin: Optional[str] = None,
-    skip: int = Query(default=0, ge=0, description="Registros a omitir (paginación)"),
-    limit: int = Query(default=1000, ge=1, le=5000, description="Máximo de registros a devolver"),
+    skip: int = Query(default=0, ge=0, description="Registros a omitir (paginaciÃ³n)"),
+    limit: int = Query(default=1000, ge=1, le=5000, description="MÃ¡ximo de registros a devolver"),
     db: Session = Depends(get_db),
     usuario: Usuario = Depends(obtener_usuario_actual)
 ):
-    """Obtiene registros de tareo con paginación opcional (skip/limit)."""
+    """Obtiene registros de tareo con paginaciÃ³n opcional (skip/limit)."""
     query = db.query(Tareo)
 
     if es_rol(usuario.rol, "Auxiliar"):
@@ -973,7 +984,7 @@ def obtener_tareo(
     elif dni and es_rol_en(usuario.rol, ["gdh", "Supervisor"]):
         query = query.filter(Tareo.dni == dni)
     elif es_rol(usuario.rol, "Supervisor"):
-        # Supervisor ve solo su área
+        # Supervisor ve solo su Ã¡rea
         usuarios_area = db.query(Usuario.dni).filter(Usuario.area == usuario.area).all()
         dnis_area = [u.dni for u in usuarios_area]
         query = query.filter(Tareo.dni.in_(dnis_area))
@@ -1001,7 +1012,7 @@ def obtener_estadisticas_tareo(
     db: Session = Depends(get_db),
     usuario: Usuario = Depends(obtener_usuario_actual)
 ):
-    """Obtiene estadísticas de tareo con detalles por turno"""
+    """Obtiene estadÃ­sticas de tareo con detalles por turno"""
     if es_rol(usuario.rol, "Auxiliar"):
         registros = db.query(Tareo).filter(Tareo.dni == usuario.dni).all()
     else:
@@ -1019,7 +1030,7 @@ def obtener_estadisticas_tareo(
     hoy = date.today()
     registros_hoy = sum(1 for r in registros if r.fecha.date() == hoy)
 
-    # Último archivo procesado
+    # Ãšltimo archivo procesado
     ultimo_archivo = db.query(SincronizacionExcel).order_by(SincronizacionExcel.fecha_sincronizacion.desc()).first()
 
     return {
@@ -1058,9 +1069,9 @@ def actualizar_tareo(
     return {"msg": "Tareo actualizado"}
 
 
-# ═══════════════════════════════════════════
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 # ENDPOINTS - COMENTARIOS AUXILIAR
-# ═══════════════════════════════════════════
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 @app.post("/tareo/comentario")
 def crear_comentario_tareo(
@@ -1099,9 +1110,9 @@ def obtener_comentarios_tareo(
     return query.order_by(ComentarioAuxiliar.fecha_creacion.desc()).all()
 
 
-# ═══════════════════════════════════════════
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 # ENDPOINTS - COLABORADORES
-# ═══════════════════════════════════════════
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 @app.get("/colaboradores")
 def obtener_colaboradores(
@@ -1217,7 +1228,7 @@ def actualizar_colaborador(
 
 @app.get("/areas")
 def obtener_areas(db: Session = Depends(get_db)):
-    """Lista de áreas"""
+    """Lista de Ã¡reas"""
     areas = db.query(Usuario.area).distinct().filter(Usuario.area.isnot(None)).all()
     return sorted([area[0] for area in areas])
 
@@ -1237,12 +1248,12 @@ def cambiar_password(
     db: Session = Depends(get_db),
     usuario: Usuario = Depends(obtener_usuario_actual)
 ):
-    """Cambia la contraseña del usuario actual"""
+    """Cambia la contraseÃ±a del usuario actual"""
     if es_rol(usuario.rol, "Auxiliar"):
-        raise HTTPException(status_code=403, detail="Los auxiliares no pueden cambiar su contraseña")
+        raise HTTPException(status_code=403, detail="Los auxiliares no pueden cambiar su contraseÃ±a")
 
     if not verify_password(data.password_actual, usuario.password):
-        raise HTTPException(status_code=401, detail="Contraseña actual incorrecta")
+        raise HTTPException(status_code=401, detail="ContraseÃ±a actual incorrecta")
 
     usuario.password = hash_password(data.password_nuevo)
     usuario.fecha_ultima_modificacion = datetime.utcnow()
@@ -1254,10 +1265,10 @@ def cambiar_password(
         valor_anterior="***",
         valor_nuevo="***",
         tipo_cambio="cambio_password",
-        descripcion="Usuario cambió su contraseña"
+        descripcion="Usuario cambiÃ³ su contraseÃ±a"
     ))
     db.commit()
-    return {"msg": "Contraseña actualizada correctamente"}
+    return {"msg": "ContraseÃ±a actualizada correctamente"}
 
 
 @app.put("/mi-perfil")
@@ -1278,7 +1289,7 @@ def actualizar_mi_perfil(
             valor_anterior=usuario.nombre,
             valor_nuevo=data.nombre,
             tipo_cambio="actualizacion_manual",
-            descripcion="Usuario actualizó su nombre"
+            descripcion="Usuario actualizÃ³ su nombre"
         ))
         usuario.nombre = data.nombre
 
@@ -1299,16 +1310,16 @@ def obtener_historial(
     return db.query(HistorialCambios).order_by(HistorialCambios.fecha.desc()).limit(limite).all()
 
 
-# ═══════════════════════════════════════════
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 # ENDPOINTS - DASHBOARD STATS
-# ═══════════════════════════════════════════
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 @app.get("/dashboard/stats")
 def obtener_dashboard_stats(
     db: Session = Depends(get_db),
     usuario: Usuario = Depends(obtener_usuario_actual)
 ):
-    """Estadísticas del dashboard según rol"""
+    """EstadÃ­sticas del dashboard segÃºn rol"""
     if es_rol(usuario.rol, "gdh"):
         activos = db.query(Usuario).filter(Usuario.estado == "activo").count()
         inactivos = db.query(Usuario).filter(Usuario.estado == "inactivo").count()
@@ -1353,7 +1364,7 @@ def obtener_dashboard_stats(
 
 @app.get("/health")
 def health_check(db: Session = Depends(get_db)):
-    """Health check: verifica que la aplicación y la BD estén operativas."""
+    """Health check: verifica que la aplicaciÃ³n y la BD estÃ©n operativas."""
     try:
         db.execute(__import__("sqlalchemy").text("SELECT 1"))
         db_status = "ok"
@@ -1371,7 +1382,7 @@ def health_check(db: Session = Depends(get_db)):
 @app.get("/")
 def root():
     return {
-        "sistema": "SGC - Sistema de Gestión de Colaboradores",
+        "sistema": "SGC - Sistema de GestiÃ³n de Colaboradores",
         "version": "3.1",
         "estado": "operativo"
     }
