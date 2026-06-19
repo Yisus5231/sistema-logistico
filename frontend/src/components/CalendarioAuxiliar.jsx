@@ -22,6 +22,13 @@ const MONTHS = [
 const WEEKDAYS = ["Lun", "Mar", "Mie", "Jue", "Vie", "Sab", "Dom"];
 
 const STATUS = {
+  A: {
+    label: "Asistio",
+    icon: "✓",
+    className: "bg-emerald-100 text-emerald-900 border-emerald-300 ring-emerald-200",
+    dot: "bg-emerald-500",
+    group: "trabajados",
+  },
   M: {
     label: "Turno Dia",
     icon: "☀️",
@@ -148,7 +155,7 @@ function normalizeCode(value) {
   return String(value || "").trim().toUpperCase();
 }
 
-const WORKED_SHIFT_CODES = new Set(["M", "T", "N"]);
+const WORKED_SHIFT_CODES = new Set(["A", "M", "T", "N"]);
 
 function pad(value) {
   return String(value).padStart(2, "0");
@@ -353,6 +360,7 @@ export default function CalendarioAuxiliar() {
       noche: 0,
       tarde: 0,
       dia: 0,
+      incompletas: 0,
     };
 
     calendarDays.forEach((day) => {
@@ -360,7 +368,8 @@ export default function CalendarioAuxiliar() {
       const code = day.code;
       const status = STATUS[code];
       if (!status) return;
-      if (["M", "N", "T", "FT", "DT"].includes(code)) base.trabajados += 1;
+      if (["A", "M", "N", "T", "FT", "DT"].includes(code)) base.trabajados += 1;
+      if (day.record?.asistencia_incompleta) base.incompletas += 1;
       if (code === "M") base.dia += 1;
       if (code === "N") base.noche += 1;
       if (code === "T") base.tarde += 1;
@@ -487,8 +496,9 @@ export default function CalendarioAuxiliar() {
         </div>
       </section>
 
-      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
+      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-7">
         <StatCard label="Trabajados" value={stats.trabajados} tone="navy" />
+        <StatCard label="Incompletas" value={stats.incompletas} tone="yellow" />
         <StatCard label="Faltas" value={stats.faltas} tone="red" />
         <StatCard label="Vacaciones" value={stats.vacaciones} tone="teal" />
         <StatCard label="Permisos" value={stats.permisos} tone="green" />
@@ -576,8 +586,17 @@ function CalendarCell({ item, today, loading, onClick }) {
   const status = item.status || DEFAULT_STATUS;
   const hasStatus = Boolean(item.code);
   const isToday = isSameDay(item.date, today);
+  const marcaciones = [
+    item.record?.primera_marcacion ? `Primera marcacion: ${item.record.primera_marcacion}` : null,
+    item.record?.ultima_marcacion ? `Ultima marcacion: ${item.record.ultima_marcacion}` : null,
+  ].filter(Boolean);
   const tooltip = hasStatus
-    ? `${status.label}${item.holidayName ? ` - ${item.holidayName}` : ""}${item.record?.comentario_gdh ? ` - ${item.record.comentario_gdh}` : ""}`
+    ? [
+        status.label,
+        item.holidayName || null,
+        ...marcaciones,
+        item.record?.comentario_gdh || null,
+      ].filter(Boolean).join(" - ")
     : "Sin registro";
 
   return (
@@ -611,6 +630,9 @@ function CalendarCell({ item, today, loading, onClick }) {
         <span className="mt-1 hidden truncate text-[10px] font-bold opacity-80 sm:block">
           {status.label}
         </span>
+      )}
+      {item.record?.asistencia_incompleta && (
+        <span className="absolute bottom-1.5 right-1.5 h-2.5 w-2.5 rounded-full bg-amber-500 ring-2 ring-white" />
       )}
     </motion.button>
   );
@@ -668,6 +690,9 @@ function DayModal({ day, onClose }) {
           <DetailTile icon={CalendarDays} label="Fecha" value={formatDate(day.date)} />
           <DetailTile icon={Clock3} label="Turno" value={status.label} />
           <DetailTile label="Asistencia" value={day.code || "Sin registro"} />
+          <DetailTile label="Primera marcacion" value={record?.primera_marcacion || "Sin registro"} />
+          <DetailTile label="Ultima marcacion" value={record?.ultima_marcacion || "Sin registro"} />
+          {record?.asistencia_incompleta && <DetailTile label="Marcacion" value="Incompleta" />}
           {day.holidayName && <DetailTile label="Feriado" value={day.holidayName} />}
           <DetailTile label="Horas extras" value={record?.horas_extras || record?.horas_extra || "0"} />
           <DetailTile label="Estado" value={record?.estado || record?.estado_revision || "Pendiente de cierre"} />
