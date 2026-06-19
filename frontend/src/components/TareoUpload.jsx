@@ -1,10 +1,12 @@
 import { useState, useRef } from "react";
-import { Upload, AlertCircle, CheckCircle } from "lucide-react";
+import { Upload, AlertCircle, CheckCircle, CalendarDays } from "lucide-react";
 import toast from "react-hot-toast";
 import api from "../api";
 
 export default function TareoUpload() {
   const [archivo, setArchivo] = useState(null);
+  const [fechaInicio, setFechaInicio] = useState("");
+  const [fechaFin, setFechaFin] = useState("");
   const [cargando, setCargando] = useState(false);
   const [resultado, setResultado] = useState(null);
   const inputRef = useRef(null);
@@ -40,10 +42,14 @@ export default function TareoUpload() {
       toast.error("Selecciona un archivo");
       return;
     }
+    if (fechaInicio && fechaFin && fechaInicio > fechaFin) {
+      toast.error("La fecha desde no puede ser mayor que la fecha hasta");
+      return;
+    }
 
     setCargando(true);
     try {
-      const res = await api.subirTareoExcel(archivo);
+      const res = await api.subirTareoExcel(archivo, fechaInicio, fechaFin);
 
       if (res.exitoso) {
         setResultado(res);
@@ -73,6 +79,33 @@ export default function TareoUpload() {
         <p className="text-gray-600 mb-6">
           Sube archivos Excel con datos de asistencia y horarios
         </p>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+          <label className="block">
+            <span className="text-sm font-semibold text-gray-700 flex items-center gap-2 mb-2">
+              <CalendarDays size={16} />
+              Desde
+            </span>
+            <input
+              type="date"
+              value={fechaInicio}
+              onChange={(e) => setFechaInicio(e.target.value)}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+            />
+          </label>
+          <label className="block">
+            <span className="text-sm font-semibold text-gray-700 flex items-center gap-2 mb-2">
+              <CalendarDays size={16} />
+              Hasta
+            </span>
+            <input
+              type="date"
+              value={fechaFin}
+              onChange={(e) => setFechaFin(e.target.value)}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+            />
+          </label>
+        </div>
 
         {/* Area de Carga */}
         <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-red-500 transition">
@@ -164,6 +197,18 @@ export default function TareoUpload() {
                 <p className="text-sm text-gray-600">Actualizados</p>
                 <p className="text-2xl font-bold text-purple-600">
                   {resultado.actualizados || 0}
+                </p>
+              </div>
+              <div className="bg-white p-4 rounded-lg">
+                <p className="text-sm text-gray-600">Incompletos</p>
+                <p className="text-2xl font-bold text-amber-600">
+                  {resultado.incompletos || 0}
+                </p>
+              </div>
+              <div className="bg-white p-4 rounded-lg">
+                <p className="text-sm text-gray-600">Fuera de rango</p>
+                <p className="text-2xl font-bold text-gray-600">
+                  {resultado.omitidos_fuera_rango || 0}
                 </p>
               </div>
             </div>

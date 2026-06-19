@@ -3,10 +3,11 @@ Sistema de Gestión de Colaboradores + Anuncios + Tareo
 Backend - FastAPI v3.1
 """
 
-from fastapi import FastAPI, UploadFile, File, HTTPException, Query, Depends, Request
+from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Query, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict, field_validator
+from sqlalchemy import inspect, text
 from sqlalchemy.orm import Session
 from typing import Optional
 from datetime import datetime, date, timedelta
@@ -31,6 +32,28 @@ from reglas_turnos import determinar_turno
 
 # Crear tablas
 Base.metadata.create_all(bind=engine)
+
+
+def asegurar_columnas_tareo():
+    inspector = inspect(engine)
+    if "tareo" not in inspector.get_table_names():
+        return
+
+    columnas = {col["name"] for col in inspector.get_columns("tareo")}
+    nuevas_columnas = {
+        "primera_marcacion": "VARCHAR(20)",
+        "ultima_marcacion": "VARCHAR(20)",
+        "marcaciones_detalle": "TEXT",
+        "asistencia_incompleta": "BOOLEAN DEFAULT 0",
+    }
+
+    with engine.begin() as conn:
+        for nombre, tipo in nuevas_columnas.items():
+            if nombre not in columnas:
+                conn.execute(text(f"ALTER TABLE tareo ADD COLUMN {nombre} {tipo}"))
+
+
+asegurar_columnas_tareo()
 # Auto-seed usuarios si no existen
 from database import SessionLocal as _SessionLocal
 from models import Usuario as _Usuario
@@ -580,9 +603,51 @@ def marcar_todas_leidas(
 # ENDPOINTS - TAREO (ASISTENCIA)
 # ═══════════════════════════════════════════
 
+def normalizar_dni(valor) -> Optional[str]:
+    if valor is None:
+        return None
+    texto = str(valor).strip()
+    if not texto or texto.lower() == "nan":
+        return None
+    if texto.endswith(".0"):
+        texto = texto[:-2]
+    solo_digitos = "".join(ch for ch in texto if ch.isdigit())
+    return solo_digitos or texto
+
+
+def parsear_hora_marcacion(valor) -> Optional[str]:
+    if valor is None:
+        return None
+    texto = str(valor).strip()
+    if not texto or texto.lower() == "nan":
+        return None
+    if hasattr(valor, "strftime"):
+        try:
+            return valor.strftime("%H:%M")
+        except Exception:
+            pass
+    if " " in texto and ":" in texto:
+        texto = texto.split()[-1]
+    partes = texto.split(":")
+    if len(partes) >= 2:
+        return f"{partes[0].zfill(2)}:{partes[1].zfill(2)}"
+    return texto
+
+
+def combinar_comentario_marcacion(comentario: str, incompleta: bool) -> str:
+    partes = []
+    if comentario:
+        partes.append(comentario)
+    if incompleta:
+        partes.append("Asistencia con marcacion incompleta: falta ultima marcacion")
+    return " | ".join(partes)
+
+
 @app.post("/tareo/subir-excel")
 async def subir_tareo_excel(
     archivo: UploadFile = File(...),
+    fecha_inicio: Optional[str] = Form(None),
+    fecha_fin: Optional[str] = Form(None),
     db: Session = Depends(get_db),
     usuario: Usuario = Depends(obtener_usuario_actual)
 ):
@@ -604,7 +669,14 @@ async def subir_tareo_excel(
 
         creados = 0
         actualizados = 0
+        incompletos = 0
+        omitidos_fuera_rango = 0
         errores = []
+        rango_inicio = pd.to_datetime(fecha_inicio).date() if fecha_inicio else None
+        rango_fin = pd.to_datetime(fecha_fin).date() if fecha_fin else None
+
+        if rango_inicio and rango_fin and rango_inicio > rango_fin:
+            return {"error": "La fecha desde no puede ser mayor que la fecha hasta", "exitoso": False}
 
         if "Datos" in sheet_names and "Asistencia Total" in sheet_names:
             creados, actualizados, errores = procesar_tareo_transpuesto(tmp_path, db, excel_file)
@@ -673,14 +745,13 @@ async def subir_tareo_excel(
             usuarios_cache = {str(u.dni).strip(): u.nombre for u in db.query(Usuario).all()}
             
             # OPTIMIZACIÓN: Mover imports fuera del loop
-            import datetime as dt
             
             registros_por_clave = {}
             
             for idx, row in df.iterrows():
                 try:
-                    dni = str(row[dni_col]).strip()
-                    if not dni or dni.lower() == "nan":
+                    dni = normalizar_dni(row[dni_col])
+                    if not dni:
                         continue
 
                     try:
@@ -690,38 +761,21 @@ async def subir_tareo_excel(
                         errores.append(f"Fila {idx + 2}: Fecha inválida")
                         continue
 
+                    if rango_inicio and fecha < rango_inicio:
+                        omitidos_fuera_rango += 1
+                        continue
+                    if rango_fin and fecha > rango_fin:
+                        omitidos_fuera_rango += 1
+                        continue
+
+                    hora_entrada = parsear_hora_marcacion(row[primera_col]) if primera_col and pd.notna(row[primera_col]) else None
+                    hora_salida = parsear_hora_marcacion(row[ultima_col]) if ultima_col and pd.notna(row[ultima_col]) else None
+                    asistencia_incompleta = bool(hora_entrada and not hora_salida)
+
                     # Calcular asistencia automáticamente si no existe columna
                     if calcular_asistencia_auto and primera_col:
-                        hora_entrada = None
-                        hora_salida = None
-                        
-                        try:
-                            if pd.notna(row[primera_col]):
-                                val_entrada = row[primera_col]
-                                if isinstance(val_entrada, str):
-                                    hora_entrada = val_entrada.strip()
-                                elif isinstance(val_entrada, dt.time):
-                                    hora_entrada = val_entrada.strftime("%H:%M:%S")
-                                else:
-                                    hora_entrada = str(val_entrada).strip()
-                        except Exception as e:
-                            errores.append(f"Fila {idx + 2}: Error procesando hora de entrada - {str(e)}")
-                            hora_entrada = None
-                        
-                        try:
-                            if ultima_col and pd.notna(row[ultima_col]):
-                                val_salida = row[ultima_col]
-                                if isinstance(val_salida, str):
-                                    hora_salida = val_salida.strip()
-                                elif isinstance(val_salida, dt.time):
-                                    hora_salida = val_salida.strftime("%H:%M:%S")
-                                else:
-                                    hora_salida = str(val_salida).strip()
-                        except Exception:
-                            hora_salida = None
-                        
                         # Aplicar reglas automáticas de turnos
-                        asistencia = determinar_turno(hora_entrada, hora_salida)
+                        asistencia = "A" if asistencia_incompleta else determinar_turno(hora_entrada, hora_salida)
                     else:
                         # Usar columna de asistencia si existe
                         asistencia = str(row[asistencia_col]).strip().upper() if asistencia_col and pd.notna(row[asistencia_col]) else "F"
@@ -729,6 +783,17 @@ async def subir_tareo_excel(
                     comentario = ""
                     if observacion_col and pd.notna(row[observacion_col]):
                         comentario = str(row[observacion_col]).strip()
+                    comentario = combinar_comentario_marcacion(comentario, asistencia_incompleta)
+                    if asistencia_incompleta:
+                        incompletos += 1
+
+                    marcaciones_detalle = " | ".join(
+                        item for item in [
+                            f"Primera marcacion: {hora_entrada}" if hora_entrada else "",
+                            f"Ultima marcacion: {hora_salida}" if hora_salida else "",
+                        ]
+                        if item
+                    )
 
                     nombre = usuarios_cache.get(dni, dni)
                     key = (dni, fecha)
@@ -737,7 +802,11 @@ async def subir_tareo_excel(
                         'fecha': fecha,
                         'asistencia': asistencia,
                         'comentario_gdh': comentario,
-                        'nombre': nombre
+                        'nombre': nombre,
+                        'primera_marcacion': hora_entrada,
+                        'ultima_marcacion': hora_salida,
+                        'marcaciones_detalle': marcaciones_detalle,
+                        'asistencia_incompleta': asistencia_incompleta,
                     }
 
                 except Exception as row_error:
@@ -762,6 +831,10 @@ async def subir_tareo_excel(
                             "id": existente.id,
                             "asistencia": datos["asistencia"],
                             "comentario_gdh": datos["comentario_gdh"],
+                            "primera_marcacion": datos["primera_marcacion"],
+                            "ultima_marcacion": datos["ultima_marcacion"],
+                            "marcaciones_detalle": datos["marcaciones_detalle"],
+                            "asistencia_incompleta": datos["asistencia_incompleta"],
                             "fecha_actualizacion": ahora,
                         })
                     else:
@@ -786,6 +859,12 @@ async def subir_tareo_excel(
             "creados": creados,
             "actualizados": actualizados,
             "total": creados + actualizados,
+            "incompletos": incompletos,
+            "omitidos_fuera_rango": omitidos_fuera_rango,
+            "rango": {
+                "desde": str(rango_inicio) if rango_inicio else None,
+                "hasta": str(rango_fin) if rango_fin else None
+            },
             "errores": errores if errores else None
         }
 
