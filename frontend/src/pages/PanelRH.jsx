@@ -1,10 +1,12 @@
 import { useState, useRef, useEffect } from "react";
-import { Upload, TrendingUp, Users, Clock, Zap, AlertCircle, CheckCircle, Activity, BarChart3 } from "lucide-react";
+import { Upload, TrendingUp, Users, Clock, Zap, AlertCircle, CheckCircle, Activity, BarChart3, CalendarDays } from "lucide-react";
 import toast from "react-hot-toast";
 import api from "../api";
 
 export default function PanelRH() {
   const [archivo, setArchivo] = useState(null);
+  const [fechaInicio, setFechaInicio] = useState("");
+  const [fechaFin, setFechaFin] = useState("");
   const [cargando, setCargando] = useState(false);
   const [resultado, setResultado] = useState(null);
   const [estadisticas, setEstadisticas] = useState(null);
@@ -65,10 +67,14 @@ export default function PanelRH() {
       toast.error("Selecciona un archivo");
       return;
     }
+    if (fechaInicio && fechaFin && fechaInicio > fechaFin) {
+      toast.error("La fecha desde no puede ser mayor que la fecha hasta");
+      return;
+    }
 
     setCargando(true);
     try {
-      const res = await api.subirTareoExcel(archivo);
+      const res = await api.subirTareoExcel(archivo, fechaInicio, fechaFin);
       if (res.exitoso) {
         setResultado(res);
         toast.success("✅ Tareo sincronizado correctamente");
@@ -116,6 +122,33 @@ export default function PanelRH() {
           <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 space-y-4">
             <h2 className="text-lg font-bold text-slate-800">📤 Subir Archivo de Tareo</h2>
             
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <label className="block">
+                <span className="text-xs font-semibold text-slate-600 flex items-center gap-1.5 mb-1.5">
+                  <CalendarDays size={14} />
+                  Desde
+                </span>
+                <input
+                  type="date"
+                  value={fechaInicio}
+                  onChange={(e) => setFechaInicio(e.target.value)}
+                  className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+                />
+              </label>
+              <label className="block">
+                <span className="text-xs font-semibold text-slate-600 flex items-center gap-1.5 mb-1.5">
+                  <CalendarDays size={14} />
+                  Hasta
+                </span>
+                <input
+                  type="date"
+                  value={fechaFin}
+                  onChange={(e) => setFechaFin(e.target.value)}
+                  className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+                />
+              </label>
+            </div>
+
             <div
               onDragOver={(e) => e.preventDefault()}
               onDrop={handleDrop}
@@ -159,12 +192,20 @@ export default function PanelRH() {
                 </div>
                 <div className="grid grid-cols-2 gap-2 text-xs">
                   <div className="text-center p-2 bg-white rounded">
-                    <p className="font-bold text-slate-800">{resultado.stats?.total || 0}</p>
+                    <p className="font-bold text-slate-800">{resultado.total || resultado.stats?.total || 0}</p>
                     <p className="text-slate-600">Procesados</p>
                   </div>
                   <div className="text-center p-2 bg-white rounded">
-                    <p className="font-bold text-green-600">{resultado.stats?.creados || 0}</p>
+                    <p className="font-bold text-green-600">{resultado.creados || resultado.stats?.creados || 0}</p>
                     <p className="text-slate-600">Nuevos</p>
+                  </div>
+                  <div className="text-center p-2 bg-white rounded">
+                    <p className="font-bold text-amber-600">{resultado.incompletos || 0}</p>
+                    <p className="text-slate-600">Incompletos</p>
+                  </div>
+                  <div className="text-center p-2 bg-white rounded">
+                    <p className="font-bold text-slate-600">{resultado.omitidos_fuera_rango || 0}</p>
+                    <p className="text-slate-600">Fuera rango</p>
                   </div>
                 </div>
               </div>

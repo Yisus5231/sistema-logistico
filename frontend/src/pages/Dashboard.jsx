@@ -4,6 +4,7 @@ import {
   ArrowRight,
   Building2,
   Calendar,
+  CalendarDays,
   CheckCircle2,
   Clock,
   History,
@@ -33,6 +34,8 @@ export default function Dashboard() {
 
   // Upload state
   const [archivo, setArchivo] = useState(null);
+  const [fechaInicio, setFechaInicio] = useState("");
+  const [fechaFin, setFechaFin] = useState("");
   const [cargando, setCargando] = useState(false);
   const [resultado, setResultado] = useState(null);
   const [cargandoStats, setCargandoStats] = useState(true);
@@ -102,10 +105,14 @@ export default function Dashboard() {
       toast.error("Selecciona un archivo");
       return;
     }
+    if (fechaInicio && fechaFin && fechaInicio > fechaFin) {
+      toast.error("La fecha desde no puede ser mayor que la fecha hasta");
+      return;
+    }
 
     setCargando(true);
     try {
-      const res = await api.subirTareoExcel(archivo);
+      const res = await api.subirTareoExcel(archivo, fechaInicio, fechaFin);
       if (res.exitoso) {
         setResultado(res);
         toast.success("✅ Tareo sincronizado correctamente");
@@ -250,6 +257,33 @@ export default function Dashboard() {
                 <h2 className="text-lg font-bold text-gray-900">Sincronizar Tareo</h2>
               </div>
 
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+                <label className="block">
+                  <span className="text-xs font-semibold text-gray-600 flex items-center gap-1.5 mb-1.5">
+                    <CalendarDays size={14} />
+                    Desde
+                  </span>
+                  <input
+                    type="date"
+                    value={fechaInicio}
+                    onChange={(e) => setFechaInicio(e.target.value)}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+                  />
+                </label>
+                <label className="block">
+                  <span className="text-xs font-semibold text-gray-600 flex items-center gap-1.5 mb-1.5">
+                    <CalendarDays size={14} />
+                    Hasta
+                  </span>
+                  <input
+                    type="date"
+                    value={fechaFin}
+                    onChange={(e) => setFechaFin(e.target.value)}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+                  />
+                </label>
+              </div>
+
               <div
                 onDragOver={(e) => e.preventDefault()}
                 onDrop={handleDrop}
@@ -306,7 +340,7 @@ export default function Dashboard() {
                     <CheckCircle2 size={18} className="text-emerald-600" />
                     <p className="font-semibold text-emerald-900">Sincronización exitosa</p>
                   </div>
-                  <div className="grid grid-cols-3 gap-3 text-sm">
+                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 text-sm">
                     <div>
                       <p className="text-emerald-700 font-medium">{resultado.creados || 0}</p>
                       <p className="text-xs text-emerald-600">Creados</p>
@@ -314,6 +348,14 @@ export default function Dashboard() {
                     <div>
                       <p className="text-emerald-700 font-medium">{resultado.actualizados || 0}</p>
                       <p className="text-xs text-emerald-600">Actualizados</p>
+                    </div>
+                    <div>
+                      <p className="text-amber-700 font-medium">{resultado.incompletos || 0}</p>
+                      <p className="text-xs text-amber-600">Incompletos</p>
+                    </div>
+                    <div>
+                      <p className="text-slate-700 font-medium">{resultado.omitidos_fuera_rango || 0}</p>
+                      <p className="text-xs text-slate-600">Fuera rango</p>
                     </div>
                     <div>
                       <p className="text-emerald-700 font-medium">{resultado.errores?.length || 0}</p>
