@@ -57,27 +57,38 @@ export default function Login() {
       <section className="mx-auto grid min-h-[calc(100vh-100px)] max-w-7xl items-center gap-8 px-5 py-8 lg:grid-cols-[1fr_440px]">
         <div className="relative overflow-hidden rounded-2xl bg-white p-7 shadow-2xl shadow-slate-900/10 sm:p-10">
           <div className="absolute inset-y-0 right-0 hidden w-[34%] bg-gradient-to-br from-[#f8d8d8] via-white to-[#dbe7f6] lg:block" />
-          <div className="relative max-w-3xl">
-            <div className="mb-8 inline-flex items-center gap-2 rounded-full border border-[#e30613]/15 bg-[#e30613]/8 px-3 py-1 text-xs font-black text-[#e30613]">
-              <MapPin size={14} />
-              Onsite Oslo, Punta Negra
+          <div className="relative">
+            <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_34%] lg:items-center">
+              <div className="max-w-3xl">
+                <div className="mb-8 inline-flex items-center gap-2 rounded-full border border-[#e30613]/15 bg-[#e30613]/8 px-3 py-1 text-xs font-black text-[#e30613]">
+                  <MapPin size={14} />
+                  Onsite Oslo, Punta Negra
+                </div>
+
+                <h1 className="max-w-2xl text-4xl font-black leading-tight tracking-tight text-[#06264a] sm:text-5xl">
+                  Gestion de asistencia y colaboradores
+                </h1>
+                <p className="mt-4 max-w-2xl text-base font-semibold leading-7 text-[#06264a]">
+                  Plataforma de control de tareo.
+                </p>
+              </div>
+
+              <div className="hidden h-[320px] items-end justify-center lg:flex">
+                <img
+                  src="/adecco-worker-login.png"
+                  alt="Colaborador de operaciones con equipo de seguridad"
+                  className="h-full w-full object-contain object-bottom"
+                />
+              </div>
             </div>
 
-            <h1 className="max-w-2xl text-4xl font-black leading-tight tracking-tight text-[#06264a] sm:text-5xl">
-              Gestion de asistencia y colaboradores
-            </h1>
-            <p className="mt-4 max-w-2xl text-base font-semibold leading-7 text-[#06264a]">
-              Plataforma de control de tareo.
-            </p>
-
-            <div className="mt-10 grid gap-4 sm:grid-cols-3">
+            <div className="mt-8 grid gap-4 sm:grid-cols-3">
               <Feature label="Tareo" value="Asistencia diaria" />
               <Feature label="GDH" value="Gestion central" />
               <Feature label="Supervision" value="Flujo por area" />
             </div>
           </div>
         </div>
-
         <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl shadow-slate-900/10">
           <div className="mb-7">
             <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-black text-[#06264a]">
