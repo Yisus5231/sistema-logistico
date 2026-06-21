@@ -1,18 +1,14 @@
-"""Reglas para asignar turno a partir del reporte de primera/ultima marcacion.
-
-El reporte diario no siempre entrega entrada y salida de una unica jornada:
-para el turno noche, ``Primera`` puede ser la salida de la madrugada y
-``Ultima`` puede ser la nueva entrada nocturna del mismo dia.
-"""
+"""Reglas para asignar el turno usando la primera marcacion del dia."""
 
 from datetime import datetime, time
 
 
-MANANA_DESDE = time(6, 30)
-MANANA_HASTA = time(9, 0)
+MANANA_DESDE = time(6, 0)
+MANANA_HASTA = time(12, 59, 59)
 TARDE_DESDE = time(13, 0)
-TARDE_HASTA = time(14, 59, 59)
-NOCHE_INGRESO_DESDE = time(18, 30)
+TARDE_HASTA = time(15, 59, 59)
+NOCHE_DESDE = time(18, 0)
+NOCHE_MADRUGADA_HASTA = time(1, 59, 59)
 FIN_DIA = time(23, 59, 59)
 
 
@@ -34,35 +30,29 @@ def _entre(value, desde, hasta):
 
 
 def determinar_turno(primera_marcacion: str, ultima_marcacion: str = None) -> str:
-    """Retorna ``M``, ``T``, ``N`` o ``F`` para una fila del reporte diario.
+    """Retorna el turno segun la primera marcacion.
 
-    La tarde se evalua primero porque una salida tarde a las 22:00 o 23:00
-    tambien cae en el rango horario de ingreso nocturno. Luego la noche tiene
-    prioridad sobre manana para corregir filas como ``06:10 -> 20:55``.
-    Una salida aislada de madrugada no acredita un turno trabajado del dia.
+    ``F`` se usa solamente cuando no existe una primera marcacion valida. Una
+    marcacion real fuera de los rangos configurados conserva la asistencia con
+    el codigo generico ``A`` para no convertirla incorrectamente en falta.
+    ``ultima_marcacion`` se mantiene por compatibilidad con los consumidores.
     """
 
     primera = _parse_hora(primera_marcacion)
-    ultima = _parse_hora(ultima_marcacion)
 
-    if _entre(primera, TARDE_DESDE, TARDE_HASTA):
-        return "T"
-
-    ingreso_noche = (
-        _entre(primera, NOCHE_INGRESO_DESDE, FIN_DIA)
-        or _entre(ultima, NOCHE_INGRESO_DESDE, FIN_DIA)
-    )
-    if ingreso_noche:
-        return "N"
-
+    if primera is None:
+        return "F"
     if _entre(primera, MANANA_DESDE, MANANA_HASTA):
         return "M"
-
-    return "F"
+    if _entre(primera, TARDE_DESDE, TARDE_HASTA):
+        return "T"
+    if _entre(primera, NOCHE_DESDE, FIN_DIA) or primera <= NOCHE_MADRUGADA_HASTA:
+        return "N"
+    return "A"
 
 
 def procesar_registros_tareo(registros: list) -> list:
-    """Agrega el codigo de asistencia a registros con ``primera`` y ``ultima``."""
+    """Agrega el codigo de asistencia a registros con marcaciones."""
 
     for registro in registros:
         registro["asistencia"] = determinar_turno(

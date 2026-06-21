@@ -786,7 +786,7 @@ async def subir_tareo_excel(
                     # Calcular asistencia automáticamente si no existe columna
                     if calcular_asistencia_auto and primera_col:
                         # Aplicar reglas automáticas de turnos
-                        asistencia = "A" if asistencia_incompleta else determinar_turno(hora_entrada, hora_salida)
+                        asistencia = determinar_turno(hora_entrada, hora_salida)
                     else:
                         # Usar columna de asistencia si existe
                         asistencia = str(row[asistencia_col]).strip().upper() if asistencia_col and pd.notna(row[asistencia_col]) else "F"
