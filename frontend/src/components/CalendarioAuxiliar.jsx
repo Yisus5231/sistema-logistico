@@ -566,7 +566,7 @@ export default function CalendarioAuxiliar() {
           </div>
 
           <p className="mt-3 rounded-xl border border-red-100 bg-red-50 px-3 py-2 text-xs font-bold leading-5 text-[#06264a]">
-            Haz click en cualquier dia para revisar asistencia, turno, observaciones, horas extras y comentarios RH.
+            Haz click en cualquier dia para revisar asistencia, turno, marcaciones y refrigerio.
           </p>
         </div>
       </section>
@@ -694,9 +694,9 @@ function DayModal({ day, onClose }) {
           <DetailTile label="Ultima marcacion" value={record?.ultima_marcacion || "Sin registro"} />
           {record?.asistencia_incompleta && <DetailTile label="Marcacion" value="Incompleta" />}
           {day.holidayName && <DetailTile label="Feriado" value={day.holidayName} />}
-          <DetailTile label="Salida refrigerio" value={record?.salida_refrigerio || "Sin registro"} />
-          <DetailTile label="Retorno refrigerio" value={record?.retorno_refrigerio || "Sin registro"} />
-          <DetailTile label="Total tiempo refrigerio" value={record?.total_tiempo_refrigerio || "Sin registro"} />
+          <DetailTile label="SALIDA REFRIGERIO" value={record?.salida_refrigerio || "Sin registro"} />
+          <DetailTile label="RETORNO REFRIGERIO" value={record?.retorno_refrigerio || "Sin registro"} />
+          <DetailTile label="TOTAL TIEMPO REFRIGERIO" value={record?.total_tiempo_refrigerio || "Sin registro"} />
           <div className="sm:col-span-2">
             <DetailTile
               icon={MessageSquareText}
