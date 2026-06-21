@@ -694,9 +694,9 @@ function DayModal({ day, onClose }) {
           <DetailTile label="Ultima marcacion" value={record?.ultima_marcacion || "Sin registro"} />
           {record?.asistencia_incompleta && <DetailTile label="Marcacion" value="Incompleta" />}
           {day.holidayName && <DetailTile label="Feriado" value={day.holidayName} />}
-          <DetailTile label="Horas extras" value={record?.horas_extras || record?.horas_extra || "0"} />
-          <DetailTile label="Estado" value={record?.estado || record?.estado_revision || "Pendiente de cierre"} />
-          <DetailTile label="Aprobacion" value={record?.aprobado ? "Aprobado" : record?.rechazado ? "Rechazado" : "Sin revision"} />
+          <DetailTile label="Salida refrigerio" value={record?.salida_refrigerio || "Sin registro"} />
+          <DetailTile label="Retorno refrigerio" value={record?.retorno_refrigerio || "Sin registro"} />
+          <DetailTile label="Total tiempo refrigerio" value={record?.total_tiempo_refrigerio || "Sin registro"} />
           <div className="sm:col-span-2">
             <DetailTile
               icon={MessageSquareText}

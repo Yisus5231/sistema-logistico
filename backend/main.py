@@ -44,6 +44,9 @@ def asegurar_columnas_tareo():
     nuevas_columnas = {
         "primera_marcacion": "VARCHAR(20)",
         "ultima_marcacion": "VARCHAR(20)",
+        "salida_refrigerio": "VARCHAR(20)",
+        "retorno_refrigerio": "VARCHAR(20)",
+        "total_tiempo_refrigerio": "VARCHAR(20)",
         "marcaciones_detalle": "TEXT",
         "asistencia_incompleta": "BOOLEAN DEFAULT 0",
     }
@@ -635,6 +638,36 @@ def parsear_hora_marcacion(valor) -> Optional[str]:
     return texto
 
 
+def parsear_duracion_refrigerio(valor) -> Optional[str]:
+    if valor is None:
+        return None
+    texto = str(valor).strip()
+    if not texto or texto.lower() in {"nan", "nat"}:
+        return None
+
+    try:
+        if hasattr(valor, "total_seconds"):
+            total_segundos = int(round(valor.total_seconds()))
+        elif isinstance(valor, (int, float)):
+            total_segundos = int(round(float(valor) * 24 * 60 * 60))
+        else:
+            parte_hora = texto.split()[-1] if " " in texto else texto
+            partes = parte_hora.split(":")
+            if len(partes) < 2:
+                return texto
+            total_segundos = int(partes[0]) * 3600 + int(partes[1]) * 60
+            if len(partes) > 2:
+                total_segundos += int(float(partes[2]))
+    except (TypeError, ValueError, OverflowError):
+        return texto
+
+    if total_segundos < 0:
+        return None
+    horas, resto = divmod(total_segundos, 3600)
+    minutos = resto // 60
+    return f"{horas:02d}:{minutos:02d}"
+
+
 def combinar_comentario_marcacion(comentario: str, incompleta: bool) -> str:
     partes = []
     if comentario:
@@ -727,6 +760,9 @@ async def subir_tareo_excel(
             asistencia_col = find_column(df.columns, ["Asistencia", "Tipo", "Status", "Turno"])
             primera_col = find_column(df.columns, ["Primera", "Primera Marcacion", "Hora Entrada", "Entrada"])
             ultima_col = find_column(df.columns, ["Ultima", "Ultima Marcacion", "Hora Salida", "Salida"])
+            salida_refrigerio_col = find_column(df.columns, ["Salida Refrigerio"])
+            retorno_refrigerio_col = find_column(df.columns, ["Retorno Refrigerio"])
+            total_tiempo_refrigerio_col = find_column(df.columns, ["Total Tiempo Refrigerio"])
             observacion_col = find_column(df.columns, ["Observaciones", "Comentario", "Notas"])
 
             # Validar que tengamos datos mínimos
@@ -781,6 +817,9 @@ async def subir_tareo_excel(
 
                     hora_entrada = parsear_hora_marcacion(row[primera_col]) if primera_col and pd.notna(row[primera_col]) else None
                     hora_salida = parsear_hora_marcacion(row[ultima_col]) if ultima_col and pd.notna(row[ultima_col]) else None
+                    salida_refrigerio = parsear_hora_marcacion(row[salida_refrigerio_col]) if salida_refrigerio_col and pd.notna(row[salida_refrigerio_col]) else None
+                    retorno_refrigerio = parsear_hora_marcacion(row[retorno_refrigerio_col]) if retorno_refrigerio_col and pd.notna(row[retorno_refrigerio_col]) else None
+                    total_tiempo_refrigerio = parsear_duracion_refrigerio(row[total_tiempo_refrigerio_col]) if total_tiempo_refrigerio_col and pd.notna(row[total_tiempo_refrigerio_col]) else None
                     asistencia_incompleta = bool(hora_entrada and not hora_salida)
 
                     # Calcular asistencia automáticamente si no existe columna
@@ -816,6 +855,9 @@ async def subir_tareo_excel(
                         'nombre': nombre,
                         'primera_marcacion': hora_entrada,
                         'ultima_marcacion': hora_salida,
+                        'salida_refrigerio': salida_refrigerio,
+                        'retorno_refrigerio': retorno_refrigerio,
+                        'total_tiempo_refrigerio': total_tiempo_refrigerio,
                         'marcaciones_detalle': marcaciones_detalle,
                         'asistencia_incompleta': asistencia_incompleta,
                     }
@@ -844,6 +886,9 @@ async def subir_tareo_excel(
                             "comentario_gdh": datos["comentario_gdh"],
                             "primera_marcacion": datos["primera_marcacion"],
                             "ultima_marcacion": datos["ultima_marcacion"],
+                            "salida_refrigerio": datos["salida_refrigerio"],
+                            "retorno_refrigerio": datos["retorno_refrigerio"],
+                            "total_tiempo_refrigerio": datos["total_tiempo_refrigerio"],
                             "marcaciones_detalle": datos["marcaciones_detalle"],
                             "asistencia_incompleta": datos["asistencia_incompleta"],
                             "fecha_actualizacion": ahora,
